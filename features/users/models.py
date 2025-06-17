@@ -10,8 +10,8 @@ class User(models.Model):
     email = models.CharField(max_length=80)
     dob = models.DateField("date of birth", blank=True, null=True)
     company = models.ForeignKey(Company, on_delete=models.CASCADE, blank=True, null=True)
-    # A user can have one role and we will use hierarchical roles. User would be the least role with value of 0
     role = models.JSONField(default=list, help_text="List of roles assigned to the user")
+    employee_code = models.CharField(max_length=56, null=True, blank=True)
 
     def __str__(self):
         return json.dumps({"user_id": self.firebase_uid, "email": self.email, "roles": str(self.role)})

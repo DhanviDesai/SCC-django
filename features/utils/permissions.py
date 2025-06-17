@@ -1,4 +1,5 @@
 from rest_framework import permissions
+from features.users.models import User
 
 class HasRole(permissions.BasePermission):
     """
@@ -12,7 +13,9 @@ class HasRole(permissions.BasePermission):
         if not request.auth:
             return False
         user_roles = request.auth.get('roles', [])
-        print(request.auth)
+
+        if not user_roles:
+            user_roles = User.objects.get(firebase_uid=request.auth.get('uid')).role
 
         return self.required_role in user_roles
 

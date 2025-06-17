@@ -9,7 +9,7 @@ from uuid import uuid4
 from rest_framework.permissions import IsAuthenticated
 
 from features.utils.authentication import FirebaseAuthentication
-from features.utils.permissions import HasRole
+from features.utils.permissions import IsAdminRole
 
 from .models import User, Company
 from .serializers import UserSerializer
@@ -26,12 +26,14 @@ class GetMe(APIView):
     def put(self, request, uid):
         try:
             user = User.objects.get(firebase_uid=uid)
-            username = request.data.get('username', '')
-            dob = request.data.get('dob', '')
-            company = request.data.get('company', '')
-            user.username = username
-            user.dob = dob
-            user.company = Company.objects.get(company_id=company)
+            if request.data.get('username') is not None:
+                user.username = request.data.get('username')
+            if request.data.get('dob') is not None:
+                user.dob = request.data.get('dob')
+            if request.data.get('company') is not None:
+                user.company = Company.objects.get(request.data.get('company'))
+            if request.data.get('employee_code') is not None:
+                user.employee_code = request.data.get('employee_code')
             user.save()
             return success_response(UserSerializer(user).data, message="User updated", status=status.HTTP_200_OK)
         except Exception as e:
@@ -40,17 +42,25 @@ class GetMe(APIView):
 
 
 class FirebaseLogin(APIView):
+    authentication_classes = [FirebaseAuthentication]
     def post(self, request):
         firebase_token = request.data.get('firebase_token')
         if not firebase_token:
             return error_response(message="Firebase token not provided", status=status.HTTP_400_BAD_REQUEST)
-        decoded_token = auth.verify_id_token(firebase_token)
-        uid = decoded_token['uid']
-        email = decoded_token.get('email')
+        uid = request.auth.get('user_id')
+        email = request.auth.get('email')
         user, created = User.objects.get_or_create(firebase_uid=uid)
         if created:
             user.email = email
+            user.role = ['USER']
             user.save()
+        firebase_user = auth.get_user(uid)
+        current_claims = firebase_user.custom_claims if firebase_user.custom_claims else {}
+        new_claims = {
+            **current_claims,
+            'roles': user.role
+        }
+        auth.set_custom_user_claims(uid, new_claims)
         seriazlier = UserSerializer(user)
         return success_response(data=seriazlier.data, message="User created", status=status.HTTP_201_CREATED)
 
@@ -62,10 +72,20 @@ class ListUsers(APIView):
         serializer = UserSerializer(users, many=True)
         return success_response(data=serializer.data, message="User list fetched")
 
+class AdminLogin(APIView):
+    authentication_classes = [FirebaseAuthentication]
+    permission_classes = [IsAdminRole]
+    def get(self, request):
+        firebase_user = auth.get_user(request.auth.get('user_id'))
+        current_claims = firebase_user.custom_claims if firebase_user.custom_claims else {}
+        if 'roles' not in current_claims:
+            current_claims['roles'] = ['ADMIN']
+        auth.set_custom_user_claims(request.auth.get('user_id'), current_claims)
+        return success_response()
 
 class SetRoleView(APIView):
     authentication_classes = [FirebaseAuthentication]
-    permission_classes = [IsAuthenticated, lambda request, view: HasRole('Admin').has_permission(request, view)]
+    permission_classes = [IsAdminRole]
 
     def post(self, request):
         target_email = request.data.get('email')
