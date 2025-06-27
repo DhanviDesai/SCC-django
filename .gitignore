@@ -9,3 +9,4 @@ env/
 *.sqlite3
 frontend/
 scc-service.json
+/__pycache__/

@@ -8,12 +8,12 @@ class FirebaseAuthentication(authentication.BaseAuthentication):
     def authenticate(self, request):
         auth_header = request.META.get("HTTP_AUTHORIZATION")
         if not auth_header:
-            return None # No token provided
+            raise AuthenticationFailed("No token provided") # No token provided
 
         parts = auth_header.split()
         if len(parts) != 2 or parts[0].lower() != "bearer":
             # Invalid token header
-            return None
+            raise AuthenticationFailed("Invalid token header")
 
         id_token = parts[1]
 

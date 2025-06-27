@@ -26,7 +26,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-pyh2+*hw#a$4&3%ezn@w#2&_%ymlfsb9-%(^hbp@x4m7pk(k@h'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = [
     '.elasticbeanstalk.com',
@@ -43,11 +43,15 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
     'features.users',
     'corsheaders',
     'features.company',
-    'features.events',
-    'features.ui',
+    'features.sport',
+    'features.tournament',
+    'features.season',
+    'features.sport_type',
+    'features.city',
 ]
 
 MIDDLEWARE = [
