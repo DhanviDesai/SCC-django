@@ -61,12 +61,9 @@ class AddTournament(APIView):
         season = request.data.get('season')
         if not season:
             return error_response(message="Season cannot be null")
+        
         registration_start_date = request.data.get('registration_start_date')
-        if not registration_start_date:
-            return error_response(message="Registration start date cannot be null")
         registration_end_date = request.data.get('registration_end_date')
-        if not registration_end_date:
-            return error_response(message="Registration end date cannot be null")
         
         start_date = request.data.get('start_date')
         end_date = request.data.get('end_date')

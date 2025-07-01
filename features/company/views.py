@@ -33,7 +33,7 @@ class CompanyListView(generics.ListAPIView):
     filterset_fields = ['company_name']
     search_fields = ['^company_name']
 
-class IndexOperations(APIView):
+class AddCompany(APIView):
     authentication_classes = [FirebaseAuthentication]
     permission_classes = [IsAdminRole]
     def post(self, request):
@@ -41,6 +41,10 @@ class IndexOperations(APIView):
         company_name = request.data.get('company_name')
         company = Company.objects.create(company_id=str(uuid4()), company_name=company_name, company_logo=company_logo_link)
         return success_response(data=CompanySerializer(company).data, message="Company added")
+
+class IndexOperations(APIView):
+    authentication_classes = [FirebaseAuthentication]
+    permission_classes = [IsAdminRole]
 
     def get(self, request, company_id=None):
         if company_id is None:

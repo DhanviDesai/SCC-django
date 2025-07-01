@@ -11,7 +11,7 @@ from .models import City
 from .serializers import CitySerializer
 
 # Create your views here.
-class CompanyPagination(PageNumberPagination):
+class CityPagination(PageNumberPagination):
     page_size = 5
     page_size_query_param = 'page_size'
     max_page_size = 100
@@ -19,7 +19,7 @@ class CompanyPagination(PageNumberPagination):
 class ListCity(generics.ListAPIView):
     queryset = City.objects.all().order_by('name')
     serializer_class = CitySerializer
-    pagination_class = CompanyPagination
+    pagination_class = CityPagination
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ['name']
     search_fields = ['^name']
