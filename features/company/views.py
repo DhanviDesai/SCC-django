@@ -12,6 +12,7 @@ from rest_framework.filters import SearchFilter
 
 from features.utils.authentication import FirebaseAuthentication
 from features.utils.permissions import HasRole, IsAdminRole
+from features.utils.storage import generate_presigned_url
 from features.utils.response_wrapper import success_response, error_response
 from rest_framework.pagination import PageNumberPagination
 from rest_framework import generics
@@ -78,24 +79,8 @@ class GetPresignedUrl(APIView):
         file_name = request.GET.get("filename")
         file_type = request.GET.get("filetype")
 
-        s3 = boto3.client(
-            "s3",
-            region_name=settings.AWS_REGION,
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-        )
-
         try:
-            presigned_url = s3.generate_presigned_url(
-                "put_object",
-                Params={
-                    "Bucket": settings.AWS_STORAGE_BUCKET_NAME,
-                    "Key": file_name,
-                    "ContentType": file_type
-                },
-                ExpiresIn=60
-            )
-            public_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/{file_name}"
+            presigned_url, public_url = generate_presigned_url(f"companies/{file_name}", file_type)
             data = {
                 "presigned_url": presigned_url,
                 "public_url": public_url
