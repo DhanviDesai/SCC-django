@@ -8,3 +8,4 @@ class Sport(models.Model):
     name = models.CharField(max_length=128, unique=True)
     description = models.TextField()
     sport_type = models.ForeignKey(SportType, on_delete=models.CASCADE)
+    cover_image = models.CharField(max_length=256, null=True, blank=True)
