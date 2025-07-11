@@ -13,6 +13,7 @@ from features.utils.permissions import IsAdminRole
 
 from .models import User, Company
 from .serializers import UserSerializer
+from features.tournament.models import Tournament
 from features.utils.response_wrapper import success_response, error_response
 
 # Create your views here.
@@ -67,6 +68,7 @@ class FirebaseLogin(APIView):
 
 class ListUsers(APIView):
     authentication_classes = [FirebaseAuthentication]
+    permission_classes = [IsAdminRole]
     def get(self, request):
         users = User.objects.all()
         serializer = UserSerializer(users, many=True)

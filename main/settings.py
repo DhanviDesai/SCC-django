@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'features.sport_type',
     'features.city',
     'features.notifications',
+    'features.team',
 ]
 
 MIDDLEWARE = [

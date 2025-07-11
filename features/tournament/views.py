@@ -16,6 +16,8 @@ from .serializers import TournamentTypeSerializer, TournamentSerializer
 from features.season.models import Season
 from features.sport.models import Sport
 from features.city.models import City
+from features.users.models import User
+from features.users.serializers import UserSerializer
 
 # Create your views here.
 class TournamentTypeIndexOperations(APIView):
@@ -89,4 +91,35 @@ class DeleteTournament(APIView):
         tournament.delete()
         return success_response(data=TournamentSerializer(tournament).data, message="Tournament Deleted")
 
+class RegisterTournament(APIView):
+    authentication_classes = [FirebaseAuthentication]
+    def put(self, request, id=None):
+        if id is None:
+            return error_response(message="Tournament id cannot be none")
+        uid = request.auth.get("user_id")
+        user = User.objects.get(firebase_uid=uid)
+        tournament = Tournament.objects.get(id=id)
+        user.tournament.add(tournament)
+        return success_response(data=UserSerializer(user).data, message="Successfully registered to tournament", status=status.HTTP_200_OK)
 
+class ListRegistrants(APIView):
+    authentication_classes = [FirebaseAuthentication]
+    def get(self, request, id=None):
+        if id is None:
+            return error_response(message="Tournament id cannot be null")
+        try:
+            tournament = Tournament.objects.get(id=id)
+            queryset = User.objects.filter(tournament=tournament)
+            return success_response(data=UserSerializer(queryset, many=True).data, message="Registrants fetched")
+        except Exception:
+            return error_response(message="Tournament not found", status=status.HTTP_404_NOT_FOUND)
+
+class GetTournament(APIView):
+    def get(self, request, id=None):
+        if id is None:
+            return error_response(message="Tournament id cannot be null")
+        try:
+            tournament = Tournament.objects.get(id=id)
+            return success_response(data=TournamentSerializer(tournament).data, message="Tournament fetched successfully")
+        except Exception:
+            return error_response(message="Tournament not found", status=status.HTTP_404_NOT_FOUND)

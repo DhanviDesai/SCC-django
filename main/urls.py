@@ -27,4 +27,5 @@ urlpatterns = [
     path('api/type/', include('features.sport_type.urls')),
     path('api/sport/', include('features.sport.urls')),
     path('api/notifications/', include('features.notifications.urls')),
+    path('api/team/', include('features.team.urls')),
 ]

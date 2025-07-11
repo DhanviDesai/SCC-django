@@ -2,6 +2,7 @@ from django.db import models
 import json
 
 from features.company.models import Company
+from features.tournament.models import Tournament
 
 # Create your models here.
 class User(models.Model):
@@ -12,6 +13,7 @@ class User(models.Model):
     company = models.ForeignKey(Company, on_delete=models.CASCADE, blank=True, null=True)
     role = models.JSONField(default=list, help_text="List of roles assigned to the user")
     employee_code = models.CharField(max_length=56, null=True, blank=True)
+    tournament = models.ManyToManyField(Tournament, related_name='tournament_user')
 
     def __str__(self):
         return json.dumps({"user_id": self.firebase_uid, "email": self.email, "roles": str(self.role)})
