@@ -18,6 +18,7 @@ from features.sport.models import Sport
 from features.city.models import City
 from features.users.models import User
 from features.users.serializers import UserSerializer
+from features.utils.storage import generate_presigned_url
 
 # Create your views here.
 class TournamentTypeIndexOperations(APIView):
@@ -82,6 +83,41 @@ class AddTournament(APIView):
             tournament.cities.add(City.objects.get(id=city))
         tournament.save()
         return success_response(data=TournamentSerializer(tournament).data, message="Created tournament", status=status.HTTP_201_CREATED)
+
+class AddSchedule(APIView):
+    authentication_classes = [FirebaseAuthentication]
+    permission_classes = [IsAdminRole]
+    def post(self, request):
+        file_url = request.data.get("file_url")
+        if file_url is None:
+            return error_response(message="File url cannot be null")
+        tournament_id = request.data.get("tournament_id")
+        if tournament_id is None:
+            return error_response(message="Tournament cannot be null")
+        try:
+            tournament = Tournament.objects.get(id=tournament_id)
+            tournament.schedule = file_url
+            tournament.save()
+            return success_response(message="Schedule updated successfully", status=status.HTTP_201_CREATED)
+        except Exception:
+            return error_response(message="Tournament not found", status=status.HTTP_404_NOT_FOUND)
+
+class GetSchedulePresignedUrl(APIView):
+    authentication_classes = [FirebaseAuthentication]
+    permission_classes = [IsAdminRole]
+    def get(self, request):
+        file_name = request.GET.get("filename")
+        file_type = request.GET.get("filetype")
+
+        try:
+            presigned_url, public_url = generate_presigned_url(f"schedule/{file_name}", file_type)
+            data = {
+                "presigned_url": presigned_url,
+                "public_url": public_url
+            }
+            return success_response(data=data, message="Presigned url generated")
+        except Exception as e:
+            return error_response(status=status.HTTP_500_INTERNAL_SERVER_ERROR, data=str(e))
 
 class DeleteTournament(APIView):
     authentication_classes = [FirebaseAuthentication]

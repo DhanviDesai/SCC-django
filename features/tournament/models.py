@@ -21,6 +21,7 @@ class Tournament(models.Model):
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
     cities = models.ManyToManyField(City, related_name='cities')
+    schedule = models.CharField(max_length=256, null=True, default=None)
 
     def isIndividual(self, request):
         return self.type.name.lower().contains("individual")
