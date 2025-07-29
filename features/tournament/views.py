@@ -10,7 +10,7 @@ from rest_framework.pagination import PageNumberPagination
 from uuid import uuid4
 from rest_framework import status
 
-from .models import Tournament, TournamentType
+from .models import Tournament, TournamentType, OnlineIndividualData
 
 from .serializers import TournamentTypeSerializer, TournamentSerializer
 from features.season.models import Season
@@ -134,11 +134,14 @@ class RegisterTournament(APIView):
             return error_response(message="Tournament id cannot be none")
         uid = request.auth.get("user_id")
         user = User.objects.get(firebase_uid=uid)
-        tournament = Tournament.objects.get(id=id)
+        try:
+            tournament = Tournament.objects.get(id=id)
+        except Tournament.DoesNotExist:
+            return error_response(message="Tournament not found", status=status.HTTP_404_NOT_FOUND)
         # Individual cannot register to a team based tournament
-        if not tournament.isIndividual:
+        if not tournament.isIndividual():
             return error_response(message="Tournament is of type team")
-        user.tournament.add(tournament)
+        tournament.user.add(user)
         return success_response(data=UserSerializer(user).data, message="Successfully registered to tournament", status=status.HTTP_200_OK)
 
 class ListRegistrants(APIView):
@@ -148,10 +151,10 @@ class ListRegistrants(APIView):
             return error_response(message="Tournament id cannot be null")
         try:
             tournament = Tournament.objects.get(id=id)
-            queryset = User.objects.filter(tournament=tournament)
-            return success_response(data=UserSerializer(queryset, many=True).data, message="Registrants fetched")
-        except Exception:
+        except Tournament.DoesNotExist:
             return error_response(message="Tournament not found", status=status.HTTP_404_NOT_FOUND)
+        queryset = tournament.user.all()
+        return success_response(data=UserSerializer(queryset, many=True).data, message="Registrants fetched")
 
 class GetTournament(APIView):
     def get(self, request, id=None):
@@ -162,3 +165,44 @@ class GetTournament(APIView):
             return success_response(data=TournamentSerializer(tournament).data, message="Tournament fetched successfully")
         except Exception:
             return error_response(message="Tournament not found", status=status.HTTP_404_NOT_FOUND)
+
+# This would require smart job for leaderboard.
+# The job has to know whether to sort by ascending or descending
+class HandleIncomingData(APIView):
+    authentication_classes = [FirebaseAuthentication]
+    def put(self, request, tournament_id=None):
+        if tournament_id is None:
+            return error_response(message="Tournament cannot be null")
+        # Get the tournament
+        try:
+            tournament = Tournament.objects.get(id=tournament_id)
+        except Tournament.DoesNotExist:
+            return error_response(message="Tournament not found", status=status.HTTP_404_NOT_FOUND)
+        # Check whether this user has registered to this tournament
+        user_id = request.auth.get("user_id")
+        if not tournament.user.filter(firebase_uid=user_id).exists():
+            return error_response(message="User has not registered to the tournament")
+        # User has registered to the tournament
+        # How should the data be uploaded? Let's give a list of data where each object should have date and count
+        data_list = request.data.get("data")
+        if data_list is None:
+            return error_response(message="Data cannot be null")
+        
+        # Get the tournament type
+        if tournament.isIndividual() and tournament.isOnline():
+            # Update the data in online individual table
+            for data in data_list:
+                date = data["date"]
+                count = data["count"]
+                print(f"{date}, {count}")
+                row = OnlineIndividualData.objects.update_or_create(
+                    tournament=tournament,
+                    user=User.objects.get(firebase_uid=user_id),
+                    entry_date=date,
+                    defaults={ "data": int(count) }
+                )
+            return success_response(message="Successfully updated")
+        if tournament.isTeam() and tournament.isOnline():
+            # Update the data in online team table
+            pass
+        return error_response(message="This is to only update for online tournaments")
