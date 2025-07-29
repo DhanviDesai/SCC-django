@@ -23,7 +23,10 @@ class Tournament(models.Model):
     cities = models.ManyToManyField(City, related_name='cities')
     schedule = models.CharField(max_length=256, null=True, default=None)
 
-    def isIndividual(self, request):
+    def isIndividual(self):
         return self.type.name.lower().contains("individual")
+    
+    def isTeam(self):
+        return self.type.name.lower.containe("team")
 
 

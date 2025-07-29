@@ -14,6 +14,7 @@ class User(models.Model):
     role = models.JSONField(default=list, help_text="List of roles assigned to the user")
     employee_code = models.CharField(max_length=56, null=True, blank=True)
     tournament = models.ManyToManyField(Tournament, related_name='tournament_user')
+    fcm_token = models.TextField(null=True)
 
     def __str__(self):
         return json.dumps({"user_id": self.firebase_uid, "email": self.email, "roles": str(self.role)})

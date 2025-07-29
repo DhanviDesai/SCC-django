@@ -1,7 +1,12 @@
-from . models import Team
+from . models import Team, Invite
 from rest_framework.serializers import ModelSerializer
 
 class TeamSerializer(ModelSerializer):
     class Meta:
         model = Team
         fields = ['id', 'name', 'members', 'tournament']
+
+class InviteSerializer(ModelSerializer):
+    class Meta:
+        model = Invite
+        fields = ['id', 'team', 'invitee', 'inviter', 'created_at']

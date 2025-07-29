@@ -8,8 +8,13 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from uuid import uuid4
 from rest_framework.permissions import IsAuthenticated
 
-from features.utils.authentication import FirebaseAuthentication
+from features.utils.authentication import FirebaseAuthentication,FirebaseTokenAuthentication
 from features.utils.permissions import IsAdminRole
+
+from rest_framework.pagination import PageNumberPagination
+from rest_framework import generics
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter
 
 from .models import User, Company
 from .serializers import UserSerializer
@@ -32,9 +37,11 @@ class GetMe(APIView):
             if request.data.get('dob') is not None:
                 user.dob = request.data.get('dob')
             if request.data.get('company') is not None:
-                user.company = Company.objects.get(request.data.get('company'))
+                user.company = Company.objects.get(company_id=request.data.get('company'))
             if request.data.get('employee_code') is not None:
                 user.employee_code = request.data.get('employee_code')
+            if request.data.get('fcm_token') is not None:
+                user.fcm_token = request.data.get('fcm_token')
             user.save()
             return success_response(UserSerializer(user).data, message="User updated", status=status.HTTP_200_OK)
         except Exception as e:
@@ -43,7 +50,7 @@ class GetMe(APIView):
 
 
 class FirebaseLogin(APIView):
-    authentication_classes = [FirebaseAuthentication]
+    authentication_classes = [FirebaseTokenAuthentication]
     def post(self, request):
         firebase_token = request.data.get('firebase_token')
         if not firebase_token:
@@ -51,10 +58,14 @@ class FirebaseLogin(APIView):
         uid = request.auth.get('user_id')
         email = request.auth.get('email')
         user, created = User.objects.get_or_create(firebase_uid=uid)
-        if created:
-            user.email = email
-            user.role = ['USER']
-            user.save()
+
+        # If user already exists, then just return saying yes
+        if not created:
+            return success_response(data=UserSerializer(user).data, status=status.HTTP_200_OK)
+        
+        user.email = email
+        user.role = ['USER']
+        user.save()
         firebase_user = auth.get_user(uid)
         current_claims = firebase_user.custom_claims if firebase_user.custom_claims else {}
         new_claims = {
@@ -73,6 +84,33 @@ class ListUsers(APIView):
         users = User.objects.all()
         serializer = UserSerializer(users, many=True)
         return success_response(data=serializer.data, message="User list fetched")
+
+class UserPagination(PageNumberPagination):
+    page_size = 5
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+class ListFilteredUsers(generics.ListAPIView):
+    authentication_classes = [FirebaseAuthentication]
+
+    serializer_class = UserSerializer
+    pagination_class = UserPagination
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_fields = ['username']
+    search_fields = ['^username']
+
+    def get(self, request, *args, **kwargs):
+        company_id = request.GET.get('company_id', None)
+        print(company_id)
+        if company_id is None:
+            return error_response(message="Company id cannot be null")
+        try:
+            target_company = Company.objects.get(company_id=company_id)
+        except Company.DoesNotExist:
+            return error_response(message="Company not found", status=status.HTTP_404_NOT_FOUND)
+        self.queryset = User.objects.filter(company=target_company)
+        return super().get(self, request, *args, **kwargs)
+        
 
 class AdminLogin(APIView):
     authentication_classes = [FirebaseAuthentication]
