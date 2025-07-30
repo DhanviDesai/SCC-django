@@ -11,7 +11,7 @@ from features.users.models import User
 from features.tournament.models import Tournament
 
 from .models import Team, Invite
-from .serializers import TeamSerializer, InviteSerializer
+from .serializers import TeamSerializer, InviteSerializer, CreateTeamSerializer, InviteUserSerializer
 
 # Create your views here.
 class ListTeams(APIView):
@@ -45,49 +45,48 @@ class IndexOperations(APIView):
 class CreateTeam(APIView):
     authentication_classes = [FirebaseAuthentication]
     def post(self, request):
-        team_name = request.data.get("team_name")
-        if team_name is None:
-            return error_response(message="Team name cannot be null")
-        tournament = request.data.get("tournament_id")
-        if tournament is None:
-            return error_response(message="Tournament id cannot be null")
-        # Here, have to check if the user is already part of a team for this tournament
-        user = User.objects.get(firebase_uid=request.auth.get("user_id"))
-        try:
-            target_tournament = Tournament.objects.get(id=tournament)
-        except Exception:
-            return error_response(message="Tournament not found")
-        is_registered = user.members.filter(tournament=target_tournament).exists()
-        if is_registered:
-            return error_response(message="User is already part of a team for the tournament")
-        team = Team.objects.create(id=uuid4(), name=team_name, created_by=user)
-        team.members.add(user)
-        team.tournament.add(target_tournament)
-        return success_response(data=TeamSerializer(team).data, message="Successfully created a team", status=status.HTTP_200_OK)
+        serializer = CreateTeamSerializer(data=request.data)
+        if serializer.is_valid():
+            team_name = serializer.validated_data['team_name']
+            tournament_id = serializer.validated_data['tournament_id']
+            user = User.objects.get(firebase_uid=request.auth.get("user_id"))
+            try:
+                target_tournament = Tournament.objects.get(id=tournament_id)
+            except Tournament.DoesNotExist:
+                return error_response(message="Tournament not found")
+            is_registered = user.members.filter(tournament=target_tournament).exists()
+            if is_registered:
+                return error_response(message="User is already part of a team for the tournament")
+            team = Team.objects.create(id=uuid4(), name=team_name, created_by=user)
+            team.members.add(user)
+            team.tournament.add(target_tournament)
+            return success_response(data=TeamSerializer(team).data, message="Successfully created a team", status=status.HTTP_200_OK)
+        return error_response(message=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class InviteUser(APIView):
     authentication_classes = [FirebaseAuthentication]
     def post(self, request, team_id=None):
         if team_id is None:
             return error_response(message="Team id cannot be null")
-        # These are the users being invited
-        user_id = request.data.get("user_id")
-        if user_id is None:
-            return error_response(message="User id cannot be null or empty")
-        try:
-            invitee = User.objects.get(firebase_uid=user_id)
-        except Exception as e:
-            return error_response(message="Invitee not found")
-        # This is the inviter
-        inviter = User.objects.get(request.auth.get("user_id"))
-        try:
-            team = Team.objects.get(id=team_id)
-        except:
-            return error_response(message="Team not found")
-        now = datetime.now()
-        invite = Invite.objects.create(id=uuid4(), team=team, invitee=invitee, inviter=inviter, created_at=now, updated_at=now)
-        # Maybe here some notification can also be triggered
-        return success_response(message="User invited successfully")
+        serializer = InviteUserSerializer(data=request.data)
+        if serializer.is_valid():
+            user_id = serializer.validated_data['user_id']
+            try:
+                invitee = User.objects.get(firebase_uid=user_id)
+            except User.DoesNotExist:
+                return error_response(message="Invitee not found")
+
+            inviter = User.objects.get(firebase_uid=request.auth.get("user_id"))
+            try:
+                team = Team.objects.get(id=team_id)
+            except Team.DoesNotExist:
+                return error_response(message="Team not found")
+
+            now = datetime.now()
+            invite = Invite.objects.create(id=uuid4(), team=team, invitee=invitee, inviter=inviter, created_at=now, updated_at=now)
+            # Maybe here some notification can also be triggered
+            return success_response(message="User invited successfully")
+        return error_response(message=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class ListReceivedInvites(APIView):
     authentication_classes = [FirebaseAuthentication]

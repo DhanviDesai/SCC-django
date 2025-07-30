@@ -12,7 +12,7 @@ from features.utils.storage import generate_presigned_url
 
 
 from . models import Sport
-from .serializers import SportSerializer
+from .serializers import SportSerializer, SportCreateSerializer
 
 from features.sport_type.models import SportType
 from features.utils.response_wrapper import success_response, error_response
@@ -51,17 +51,11 @@ class AddSport(APIView):
     authentication_classes = [FirebaseAuthentication]
     permission_classes = [IsAdminRole]
     def post(self, request):
-        name = request.data.get('name', None)
-        description = request.data.get('description', '')
-        sport_type = request.data.get('sport_type')
-        cover_image = request.data.get('cover_image')
-        if name is None or sport_type is None:
-            return error_response(message="name and sport_type cannot be null")
-        sport_type_obj = SportType.objects.get(id=sport_type)
-        if sport_type_obj is None:
-            return error_response(message="sport_type not found")
-        sport = Sport.objects.create(id=uuid4(), name=name, description=description, sport_type=sport_type_obj, cover_image=cover_image)
-        return success_response(data=SportSerializer(sport).data, message="Sport created successfully", status=status.HTTP_201_CREATED)
+        serializer = SportCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            sport = serializer.save(id=uuid4())
+            return success_response(data=SportSerializer(sport).data, message="Sport created successfully", status=status.HTTP_201_CREATED)
+        return error_response(message=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class IndexOperations(APIView):
     authentication_classes = [FirebaseAuthentication]
