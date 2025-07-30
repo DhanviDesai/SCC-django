@@ -54,7 +54,12 @@ INSTALLED_APPS = [
     'features.city',
     'features.notifications',
     'features.team',
+    'drf_spectacular',
 ]
+
+REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
