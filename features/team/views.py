@@ -55,7 +55,7 @@ class CreateTeam(APIView):
         user = User.objects.get(firebase_uid=request.auth.get("user_id"))
         try:
             target_tournament = Tournament.objects.get(id=tournament)
-        except Exception:
+        except Tournament.DoesNotExist:
             return error_response(message="Tournament not found")
         is_registered = user.members.filter(tournament=target_tournament).exists()
         if is_registered:
@@ -76,7 +76,7 @@ class InviteUser(APIView):
             return error_response(message="User id cannot be null or empty")
         try:
             invitee = User.objects.get(firebase_uid=user_id)
-        except Exception as e:
+        except User.DoesNotExist:
             return error_response(message="Invitee not found")
         # This is the inviter
         inviter = User.objects.get(request.auth.get("user_id"))
@@ -102,3 +102,17 @@ class ListSentInvites(APIView):
         user = User.objects.get(firebase_uid=request.auth.get("user_id"))
         queryset = Invite.objects.filter(inviter=user)
         return success_response(InviteSerializer(queryset, many=True).data, status=status.HTTP_200_OK)
+
+# Any invite should be rejected/accepted within the registration deadline
+
+# Once the invite is accepted, if there are enough members in the team, the team would be registered to the tournament
+# Once the team is registered, all other invites for the team would expire
+class AcceptInvite(APIView):
+    authentication_classes = [FirebaseAuthentication]
+    def put(self, request, invite_id=None):
+        pass
+
+class RejectInvite(APIView):
+    authentication_classes = [FirebaseAuthentication]
+    def put(self, request, invite_id=None):
+        pass
