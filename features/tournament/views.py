@@ -12,7 +12,7 @@ from rest_framework import status
 
 from .models import Tournament, TournamentType
 
-from .serializers import TournamentTypeSerializer, TournamentSerializer
+from .serializers import TournamentTypeSerializer, TournamentSerializer, TournamentCreateSerializer, AddScheduleSerializer
 from features.season.models import Season
 from features.sport.models import Sport
 from features.city.models import City
@@ -49,58 +49,26 @@ class AddTournament(APIView):
     authentication_classes = [FirebaseAuthentication]
     permission_classes = [IsAdminRole]
     def post(self, request):
-        name = request.data.get('name')
-        if not name:
-            return error_response(message="Name cannot be null")
-        type = request.data.get('type')
-        if not type:
-            return error_response(message="Tournament type cannot be null")
-        sport = request.data.get('sport')
-        if not sport:
-            return error_response(message="Sport cannot be null")
-        cities = request.data.get('city')
-        if not cities:
-            return error_response(message="Cities cannot be null")
-        season = request.data.get('season')
-        if not season:
-            return error_response(message="Season cannot be null")
-        
-        registration_start_date = request.data.get('registration_start_date')
-        registration_end_date = request.data.get('registration_end_date')
-        
-        start_date = request.data.get('start_date')
-        end_date = request.data.get('end_date')
-        description = request.data.get('description')
-
-        type_obj = TournamentType.objects.get(id=type)
-        sport_obj = Sport.objects.get(id=sport)
-        season_obj = Season.objects.get(id=season)
-
-        tournament = Tournament.objects.create(id=uuid4(), name=name, season=season_obj, sport=sport_obj, type=type_obj, description=description,
-                                               registration_start_date=registration_start_date, registration_end_date=registration_end_date,
-                                               start_date=start_date, end_date=end_date)
-        for city in cities:
-            tournament.cities.add(City.objects.get(id=city))
-        tournament.save()
-        return success_response(data=TournamentSerializer(tournament).data, message="Created tournament", status=status.HTTP_201_CREATED)
+        serializer = TournamentCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            tournament = serializer.save(id=uuid4())
+            return success_response(data=TournamentSerializer(tournament).data, message="Created tournament", status=status.HTTP_201_CREATED)
+        return error_response(message=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class AddSchedule(APIView):
     authentication_classes = [FirebaseAuthentication]
     permission_classes = [IsAdminRole]
     def post(self, request):
-        file_url = request.data.get("file_url")
-        if file_url is None:
-            return error_response(message="File url cannot be null")
-        tournament_id = request.data.get("tournament_id")
-        if tournament_id is None:
-            return error_response(message="Tournament cannot be null")
-        try:
-            tournament = Tournament.objects.get(id=tournament_id)
-            tournament.schedule = file_url
-            tournament.save()
-            return success_response(message="Schedule updated successfully", status=status.HTTP_201_CREATED)
-        except Exception:
-            return error_response(message="Tournament not found", status=status.HTTP_404_NOT_FOUND)
+        serializer = AddScheduleSerializer(data=request.data)
+        if serializer.is_valid():
+            try:
+                tournament = Tournament.objects.get(id=serializer.validated_data['tournament_id'])
+                tournament.schedule = serializer.validated_data['file_url']
+                tournament.save()
+                return success_response(message="Schedule updated successfully", status=status.HTTP_201_CREATED)
+            except Tournament.DoesNotExist:
+                return error_response(message="Tournament not found", status=status.HTTP_404_NOT_FOUND)
+        return error_response(message=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class GetSchedulePresignedUrl(APIView):
     authentication_classes = [FirebaseAuthentication]

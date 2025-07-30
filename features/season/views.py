@@ -5,7 +5,7 @@ from rest_framework import decorators
 from rest_framework.permissions import AllowAny
 from features.utils.response_wrapper import success_response, error_response
 from . models import Season
-from . serializer import SeasonSerializer
+from . serializer import SeasonSerializer, SeasonCreateSerializer
 from uuid import uuid4
 from rest_framework import status
 
@@ -20,16 +20,14 @@ class IndexOperations(APIView):
     permission_classes = [permissions.IsAdminRole]
 
     def post(self, request):
-        name = request.data.get('season_name', None)
-        start_date = request.data.get('start_date', None)
-        end_date = request.data.get('end_date', None)
-        if name is None:
-            return error_response(message="season_name cannot be null or empty")
-        try:
-            season = Season.objects.create(id=uuid4(), name=name, start_date=start_date, end_date=end_date)
-            return success_response(data=SeasonSerializer(season).data, message="Season cretaed", status=status.HTTP_201_CREATED)
-        except Exception as e:
-            return error_response(message=str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        serializer = SeasonCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            try:
+                season = serializer.save(id=uuid4())
+                return success_response(data=SeasonSerializer(season).data, message="Season created", status=status.HTTP_201_CREATED)
+            except Exception as e:
+                return error_response(message=str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return error_response(message=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
 
     @decorators.permission_classes([AllowAny])

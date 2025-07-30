@@ -17,7 +17,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter
 
 from .models import User, Company
-from .serializers import UserSerializer
+from .serializers import UserSerializer, UserUpdateSerializer, FirebaseLoginSerializer, SetRoleSerializer
 from features.tournament.models import Tournament
 from features.utils.response_wrapper import success_response, error_response
 
@@ -32,29 +32,25 @@ class GetMe(APIView):
     def put(self, request, uid):
         try:
             user = User.objects.get(firebase_uid=uid)
-            if request.data.get('username') is not None:
-                user.username = request.data.get('username')
-            if request.data.get('dob') is not None:
-                user.dob = request.data.get('dob')
-            if request.data.get('company') is not None:
-                user.company = Company.objects.get(company_id=request.data.get('company'))
-            if request.data.get('employee_code') is not None:
-                user.employee_code = request.data.get('employee_code')
-            if request.data.get('fcm_token') is not None:
-                user.fcm_token = request.data.get('fcm_token')
-            user.save()
-            return success_response(UserSerializer(user).data, message="User updated", status=status.HTTP_200_OK)
+            serializer = UserUpdateSerializer(user, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return success_response(UserSerializer(user).data, message="User updated", status=status.HTTP_200_OK)
+            return error_response(message=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except User.DoesNotExist:
+            return error_response(message="User not found", status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
-            return error_response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return error_response(message=str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 
 class FirebaseLogin(APIView):
     authentication_classes = [FirebaseTokenAuthentication]
     def post(self, request):
-        firebase_token = request.data.get('firebase_token')
-        if not firebase_token:
-            return error_response(message="Firebase token not provided", status=status.HTTP_400_BAD_REQUEST)
+        serializer = FirebaseLoginSerializer(data=request.data)
+        if not serializer.is_valid():
+            return error_response(message=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
         uid = request.auth.get('user_id')
         email = request.auth.get('email')
         user, created = User.objects.get_or_create(firebase_uid=uid)
@@ -128,16 +124,12 @@ class SetRoleView(APIView):
     permission_classes = [IsAdminRole]
 
     def post(self, request):
-        target_email = request.data.get('email')
-        role_to_set = request.data.get('role')
+        serializer = SetRoleSerializer(data=request.data)
+        if not serializer.is_valid():
+            return error_response(message=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        if not target_email or not role_to_set:
-            return Response(
-                {
-                    'error': 'Email and role are required'
-                },
-                status=status.HTTP_200_OK
-            )
+        target_email = serializer.validated_data['email']
+        role_to_set = serializer.validated_data['role']
         
         try:
             user = auth.get_user_by_email(target_email)

@@ -18,7 +18,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework import generics
 
 from .models import Company
-from .serializers import CompanySerializer
+from .serializers import CompanySerializer, CompanyCreateSerializer, CompanyUpdateSerializer
 
 # Create your views here.
 class CompanyPagination(PageNumberPagination):
@@ -38,10 +38,11 @@ class AddCompany(APIView):
     authentication_classes = [FirebaseAuthentication]
     permission_classes = [IsAdminRole]
     def post(self, request):
-        company_logo_link = request.data.get('company_logo_link')
-        company_name = request.data.get('company_name')
-        company = Company.objects.create(company_id=str(uuid4()), company_name=company_name, company_logo=company_logo_link)
-        return success_response(data=CompanySerializer(company).data, message="Company added")
+        serializer = CompanyCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            company = serializer.save(company_id=str(uuid4()))
+            return success_response(data=CompanySerializer(company).data, message="Company added")
+        return error_response(message=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class IndexOperations(APIView):
     authentication_classes = [FirebaseAuthentication]
@@ -55,14 +56,12 @@ class IndexOperations(APIView):
         return success_response(data=CompanySerializer(queryset, many=True).data, message="Compnay list fetched")
 
     def put(self, request, company_id):
-        company_name = request.data.get('company_name')
-        company_logo_link = request.data.get('company_logo_link')
         company = Company.objects.get(company_id=company_id)
-        if company_name is not None:
-            company.company_name = company_name
-        if company_logo_link is not None:
-            company.company_logo = company_logo_link
-        company.save()
+        serializer = CompanyUpdateSerializer(company, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return success_response(data=CompanySerializer(company).data, message="Company updated")
+        return error_response(message=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, company_id):
         company = Company.objects.get(company_id=company_id)
