@@ -10,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from features.utils.authentication import FirebaseAuthentication,FirebaseTokenAuthentication
 from features.utils.permissions import IsAdminRole
+from features.tournament.serializers import TournamentSerializer
 
 from rest_framework.pagination import PageNumberPagination
 from rest_framework import generics
@@ -25,11 +26,13 @@ from features.utils.response_wrapper import success_response, error_response
 class GetMe(APIView):
     authentication_classes = [FirebaseAuthentication]
     def get(self, request, uid):
+        uid = request.auth.get("user_id")
         user = User.objects.get(firebase_uid=uid)
         serializer = UserSerializer(user)
         return success_response(data=serializer.data, message="User details fetched")
     
     def put(self, request, uid):
+        uid = request.auth.get("user_id")
         try:
             user = User.objects.get(firebase_uid=uid)
             if request.data.get('username') is not None:
@@ -160,3 +163,11 @@ class SetRoleView(APIView):
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class ListTournaments(APIView):
+    authentication_classes = [FirebaseAuthentication]
+    def get(self, request):
+        user = User.objects.get(firebase_uid = request.auth.get("user_id"))
+        # Get list of all the tournaments the user has registered to
+        queryset = user.tournament_user.all()
+        return success_response(data=TournamentSerializer(queryset, many=True).data, message="Tournaments fetched successfully")
