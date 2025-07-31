@@ -12,5 +12,5 @@ urlpatterns = [
     path("register/<slug:id>", views.RegisterTournament.as_view()),
     path("delete/<slug:id>", views.DeleteTournament.as_view()),
     path("submit/<slug:tournament_id>", views.HandleIncomingData.as_view()),
-    path("<slug:id>", views.GetTournament.as_view()),
+    path("<slug:id>", views.IndexOperations.as_view()),
 ]

@@ -10,6 +10,14 @@ class Team(models.Model):
     members = models.ManyToManyField(User, related_name='members')
     tournament = models.ManyToManyField(Tournament, related_name='tournament_team')
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
+    is_registered = models.BooleanField(default=False)
+
+class InviteStatus(models.TextChoices):
+    NA = "NA"
+    PENDING = "PENDING"
+    ACCEPTED = "ACCEPTED"
+    REJECTED = "REJECTED"
+    EXPIRED = "EXPIRED"
 
 class Invite(models.Model):
     id = models.UUIDField(primary_key=True)
@@ -18,3 +26,5 @@ class Invite(models.Model):
     inviter = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sent_invites", null=True)
     created_at = models.DateTimeField()
     updated_at = models.DateTimeField()
+    tournament = models.ForeignKey(Tournament, null=True, blank=True, on_delete=models.SET_NULL, default=None)
+    status = models.CharField(max_length=10, choices=InviteStatus.choices, default=InviteStatus.NA)

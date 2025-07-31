@@ -26,6 +26,7 @@ class Tournament(models.Model):
     cities = models.ManyToManyField(City, related_name='cities', db_index=True)
     schedule = models.CharField(max_length=256, null=True, default=None)
     user = models.ManyToManyField(User, related_name="tournament_user")
+    team_size = models.IntegerField(default=None, null=True)
 
     def isIndividual(self):
         return "individual" in self.type.name.lower()

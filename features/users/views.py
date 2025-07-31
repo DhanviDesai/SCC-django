@@ -25,13 +25,13 @@ from features.utils.response_wrapper import success_response, error_response
 # Create your views here.
 class GetMe(APIView):
     authentication_classes = [FirebaseAuthentication]
-    def get(self, request):
+    def get(self, request, uid):
         uid = request.auth.get("user_id")
         user = User.objects.get(firebase_uid=uid)
         serializer = UserSerializer(user)
         return success_response(data=serializer.data, message="User details fetched")
     
-    def put(self, request):
+    def put(self, request, uid):
         uid = request.auth.get("user_id")
         try:
             user = User.objects.get(firebase_uid=uid)

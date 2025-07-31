@@ -64,15 +64,25 @@ class AddTournament(APIView):
         season = request.data.get('season')
         if not season:
             return error_response(message="Season cannot be null")
-        
         registration_start_date = request.data.get('registration_start_date')
+        if not registration_start_date:
+            return error_response(message="Registration start date cannot be null")
         registration_end_date = request.data.get('registration_end_date')
-        
+        if not registration_end_date:
+            return error_response(message="Registration end date cannot be null")
         start_date = request.data.get('start_date')
+        if not start_date:
+            return error_response(message="Start date cannot be null")
         end_date = request.data.get('end_date')
+        if not end_date:
+            return error_response(message="End date cannot be null")
+        
         description = request.data.get('description')
+        team_size = request.data.get('team_size')
 
         type_obj = TournamentType.objects.get(id=type)
+        if "team" in type_obj.name and not team_size:
+            return error_response(message="Team size cannot be null for team type tournament")
         sport_obj = Sport.objects.get(id=sport)
         season_obj = Season.objects.get(id=season)
 
@@ -124,8 +134,9 @@ class DeleteTournament(APIView):
     permission_classes = [IsAdminRole]
     def delete(self, request, id):
         tournament = Tournament.objects.get(id=id)
+        data = TournamentSerializer(tournament).data
         tournament.delete()
-        return success_response(data=TournamentSerializer(tournament).data, message="Tournament Deleted")
+        return success_response(data=data, message="Tournament Deleted")
 
 class RegisterTournament(APIView):
     authentication_classes = [FirebaseAuthentication]
@@ -156,15 +167,46 @@ class ListRegistrants(APIView):
         queryset = tournament.user.all()
         return success_response(data=UserSerializer(queryset, many=True).data, message="Registrants fetched")
 
-class GetTournament(APIView):
+class IndexOperations(APIView):
     def get(self, request, id=None):
         if id is None:
             return error_response(message="Tournament id cannot be null")
         try:
             tournament = Tournament.objects.get(id=id)
-            return success_response(data=TournamentSerializer(tournament).data, message="Tournament fetched successfully")
-        except Exception:
+        except Tournament.DoesNotExist:
             return error_response(message="Tournament not found", status=status.HTTP_404_NOT_FOUND)
+        return success_response(data=TournamentSerializer(tournament).data, message="Tournament fetched successfully")
+    
+    def put(self, request, id=None):
+        if id is None:
+            return error_response(message="Tournamet id cannot be null")
+        try:
+            tournament = Tournament.objects.get(id=id)
+        except Tournament.DoesNotExist:
+            return error_response(message="Tournament not found", status=status.HTTP_404_NOT_FOUND)
+        name = request.data.get('name')
+        if name:
+            tournament.name = name
+        start_date = request.data.get('start_date')
+        if start_date:
+            tournament.start_date = start_date
+        end_date = request.data.get('end_date')
+        if end_date:
+            tournament.end_date = end_date
+        registration_start_date = request.data.get('registration_start_date')
+        if registration_start_date:
+            tournament.registration_start_date = registration_start_date
+        registration_end_date = request.data.get('registration_end_date')
+        if registration_end_date:
+            tournament.registration_end_date = registration_end_date
+        description = request.data.get('description')
+        if description:
+            tournament.description = description
+        team_size = request.data.get('team_size')
+        if team_size:
+            tournament.team_size = team_size
+        tournament.save()
+        return success_response(data=TournamentSerializer(tournament).data, message="Tournament updated successfully")
 
 # This would require smart job for leaderboard.
 # The job has to know whether to sort by ascending or descending
@@ -194,7 +236,6 @@ class HandleIncomingData(APIView):
             for data in data_list:
                 date = data["date"]
                 count = data["count"]
-                print(f"{date}, {count}")
                 row = OnlineIndividualData.objects.update_or_create(
                     tournament=tournament,
                     user=User.objects.get(firebase_uid=user_id),
