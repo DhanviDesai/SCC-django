@@ -115,3 +115,65 @@ class AcceptInviteAPITest(APITestCase):
         self.assertTrue(self.team.is_registered)
         self.assertEqual(self.other_pending_invite.status, InviteStatus.EXPIRED)
 
+class CreateTeamApiTest(APITestCase):
+    def setUp(self):
+        # Create user
+        self.creator = User.objects.create(firebase_uid="123", username="123")
+
+        # Create tournament
+        now = datetime.now()
+        self.season = Season.objects.create(id=uuid.uuid4(), name="season1", created_at=now, updated_at=now)
+        self.sport_type = SportType.objects.create(id=uuid.uuid4(), name="1")
+        self.sport = Sport.objects.create(id=uuid.uuid4(), name="sport1", description="a;djfa", sport_type=self.sport_type)
+        self.tournament_type = TournamentType.objects.create(id=uuid.uuid4(), name="team")
+        self.tournament = Tournament.objects.create(
+            id=uuid.uuid4(),
+            name="tournament1",
+            team_size=3,
+            season=self.season,
+            sport=self.sport,
+            type=self.tournament_type
+        )
+    
+    @patch('features.utils.authentication.FirebaseAuthentication.authenticate')
+    def test_create_team(self, mock_authenticate):
+        # Configure the mock to "log in" the user accepting the invite
+        current_user = self.creator
+
+        fake_auth_payload = {
+            'user_id': str(current_user.pk)
+        }
+
+        mock_authenticate.return_value = (current_user, fake_auth_payload)
+
+        url = reverse('create-team')
+        body = {
+            'team_name': "team1",
+            "tournament_id": self.tournament.pk
+        }
+        response = self.client.post(url,body)
+        
+        # Check that the team was created
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        url = reverse('list-my-teams')
+        response = self.client.get(url)
+
+        # Check the list team api returned success
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Check that this the only team for the tournament
+        self.assertEqual(len(response.json()['data']), 1)
+        # Check that the team is not registered yet
+        self.assertEqual(response.json()['data'][0]['is_registered'], False)
+
+        self.team = response.json()['data'][0]
+
+        url = reverse('list-teams-in-tournament', kwargs={'id': self.tournament.pk})
+        response = self.client.get(url)
+
+        # API response
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Teams count
+        self.assertEqual(len(response.json()['data']), 1)
+        # Team
+        self.assertEqual(response.json()['data'][0]['id'], self.team['id'])

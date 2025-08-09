@@ -19,6 +19,7 @@ from features.city.models import City
 from features.users.models import User
 from features.users.serializers import UserSerializer
 from features.utils.storage import generate_presigned_url
+from features.team.serializers import TeamSerializer
 
 # Create your views here.
 class TournamentTypeIndexOperations(APIView):
@@ -166,6 +167,18 @@ class ListRegistrants(APIView):
             return error_response(message="Tournament not found", status=status.HTTP_404_NOT_FOUND)
         queryset = tournament.user.all()
         return success_response(data=UserSerializer(queryset, many=True).data, message="Registrants fetched")
+
+class ListTeamsInTournament(APIView):
+    authentication_classes = [FirebaseAuthentication]
+    def get(self, respect, id=None):
+        if id is None:
+            return error_response(message="Tournament id cannot be null")
+        try:
+            tournament = Tournament.objects.get(id=id)
+        except Tournament.DoesNotExist:
+            return error_response(message="Tournament not found", status=status.HTTP_404_NOT_FOUND)
+        queryset = tournament.tournament_team.all()
+        return success_response(data=TeamSerializer(queryset, many=True).data, message="Teams fetched")
 
 class IndexOperations(APIView):
     def get(self, request, id=None):

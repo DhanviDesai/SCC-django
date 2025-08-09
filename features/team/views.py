@@ -52,7 +52,7 @@ class CreateTeam(APIView):
         tournament = request.data.get("tournament_id")
         if tournament is None:
             return error_response(message="Tournament id cannot be null")
-        # Here, have to check if the user is already part of a team for this tournament
+        # Check if user is already part of a team that is registered to the target_tournament
         user = User.objects.get(firebase_uid=request.auth.get("user_id"))
         try:
             target_tournament = Tournament.objects.get(id=tournament)
@@ -164,7 +164,7 @@ class AcceptInvite(APIView):
             # Here, send the notification to the captain or team creater that his team is registered
             # NOTIFICATION
             body = f"Congrats! Your team {team.name} is registered to tournament {team.tournament.name}"
-            if send_fcm_notification(team.created_by.fcm_token, title="Team registered", body=body):
+            if team.created_by.fcm_token is not None and send_fcm_notification(team.created_by.fcm_token, title="Team registered", body=body):
                 print("Notification sent successfully")
             # Invalidate all other invites for the same team and tournament
             Invite.objects.filter(team=invite.team, tournament=invite.tournament, status=InviteStatus.PENDING).update(status=InviteStatus.EXPIRED)
