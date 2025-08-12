@@ -4,4 +4,4 @@ from .models import User
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['firebase_uid', 'username', 'email', 'dob', 'company', 'employee_code']
+        fields = ['firebase_uid', 'username', 'email', 'dob', 'company', 'employee_code', 'gender']

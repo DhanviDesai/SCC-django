@@ -49,6 +49,27 @@ class GetMe(APIView):
             return success_response(UserSerializer(user).data, message="User updated", status=status.HTTP_200_OK)
         except Exception as e:
             return error_response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def get_serializer(self, *args, **kwargs):
+        return UserSerializer(*args, **kwargs)
+    
+    def options(self, request, *args, **kwargs):
+        """
+        Manually generate the metadata for an OPTIONS request.
+        """
+        # The metadata_class determines what the response should look like
+        meta = self.metadata_class()
+        
+        # We need to get the serializer and pass it to determine the actions
+        serializer = self.get_serializer()
+        data = meta.determine_metadata(request, self)
+        
+        # For a detail view, you'd typically want PUT/PATCH actions
+        data['actions'] = {
+            'PUT': meta.get_serializer_info(serializer)
+        }
+        
+        return Response(data)
 
 
 
@@ -58,12 +79,16 @@ class FirebaseLogin(APIView):
         firebase_token = request.data.get('firebase_token')
         if not firebase_token:
             return error_response(message="Firebase token not provided", status=status.HTTP_400_BAD_REQUEST)
+        fcm_token = request.data.get('fcm_token')
         uid = request.auth.get('user_id')
         email = request.auth.get('email')
         user, created = User.objects.get_or_create(firebase_uid=uid)
 
         # If user already exists, then just return saying yes
         if not created:
+            if not fcm_token:
+                user.fcm_token = fcm_token
+                user.save()
             return success_response(data=UserSerializer(user).data, status=status.HTTP_200_OK)
         
         user.email = email

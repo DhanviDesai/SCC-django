@@ -28,4 +28,6 @@ urlpatterns = [
     path('api/sport/', include('features.sport.urls')),
     path('api/notifications/', include('features.notifications.urls')),
     path('api/team/', include('features.team.urls')),
+    path('api/news/', include('features.news.urls')),
+    path('api/strava/', include('features.strava.urls')),
 ]

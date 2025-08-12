@@ -9,4 +9,4 @@ class SportTypeSerializer(ModelSerializer):
 class SportSerializer(ModelSerializer):
     class Meta:
         model = Sport
-        fields = ['id', 'name', 'description', 'sport_type', 'cover_image']
+        fields = ['id', 'name', 'description', 'sport_type', 'cover_image', 'status']
