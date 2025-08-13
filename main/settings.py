@@ -175,6 +175,7 @@ AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
 STRAVA_OAUTH_URL = os.getenv("STRAVA_OAUTH_URL", "https://www.strava.com/oauth/authorize")
 STRAVA_CLIENT_ID = os.getenv("STRAVA_CLIENT_ID")
 STRAVA_CLIENT_SECRET = os.getenv("STRAVA_CLIENT_SECRET")
+STRAVA_BASE_URL = os.getenv("STRAVA_BASE_URL")
 
 HOST = os.getenv('HOST')
 

@@ -11,3 +11,9 @@ class StravaUser(models.Model):
     access_token = models.TextField()
     refresh_token = models.TextField()
     expires_at = models.BigIntegerField()
+
+class StravaActivity(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    start_date = models.DateField()
+    sport_type = models.CharField(max_length=20)
+    details = models.JSONField()

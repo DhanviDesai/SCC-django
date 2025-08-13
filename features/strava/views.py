@@ -6,6 +6,7 @@ from django.conf import settings
 from urllib.parse import urlunparse, urlencode, ParseResult
 from rest_framework import status
 import json
+from rest_framework.response import Response
 
 from features.users.models import User
 from features.utils.authentication import FirebaseAuthentication
@@ -13,6 +14,7 @@ from features.utils.response_wrapper import success_response, error_response
 
 from .models import StravaUser
 from .serializers import StravaSerializer
+from .tasks import process_strava_event
 
 # Create your views here.
 class GetAuthorize(APIView):
@@ -69,7 +71,6 @@ class ExchangeToken(APIView):
                                      'code': code,
                                      'grant_type': 'authorization_code'
                                  })
-        print(response.json())
         strava_access_token = response.json()['access_token']
         strava_refresh_token = response.json()['refresh_token']
         strava_token_expires_at = response.json()['expires_at']
@@ -78,7 +79,7 @@ class ExchangeToken(APIView):
                                                 access_token=strava_access_token, refresh_token=strava_refresh_token, expires_at=strava_token_expires_at)
         
         # Let's subscribe to updates via webhooks
-        subscription_url = 'https://www.strava.com/api/v3/push_subscription'
+        subscription_url = 'https://www.strava.com/api/v3/push_subscriptions'
 
         payload = {
             'client_id': settings.STRAVA_CLIENT_ID,
@@ -119,17 +120,19 @@ class RefreshActivities(APIView):
 
 class StravaWebhookView(APIView):
     def get(self, request):
-        challenge = request.query_params.get('hub.challenge')
-        verify_token = request.query_params.get('hub.verify_token')
+        challenge = request.GET.get('hub.challenge')
+        verify_token = request.GET.get('hub.verify_token')
+
+        print(challenge)
 
         if challenge:
             response_data = {'hub.challenge': challenge}
-            return success_response(data=response_data)
+            return Response(response_data)
         return error_response()
     
     def post(self, request):
         print("Webhook event received:")
         print(json.dumps(request.data, indent=2))
-
+        process_strava_event.delay(request.data)
         return success_response()
 
