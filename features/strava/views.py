@@ -5,6 +5,7 @@ import requests
 from django.conf import settings
 from urllib.parse import urlunparse, urlencode, ParseResult
 from rest_framework import status
+import json
 
 from features.users.models import User
 from features.utils.authentication import FirebaseAuthentication
@@ -23,11 +24,11 @@ class GetAuthorize(APIView):
         user = User.objects.get(firebase_uid=uid)
 
         # Check if user is already authorized
-        # if StravaUser.objects.filter(user=user).exists():
-        #     response = {
-        #         'exists': True,
-        #     }
-        #     return success_response(data=StravaSerializer(response).data)
+        if StravaUser.objects.filter(user=user).exists():
+            response = {
+                'exists': True,
+            }
+            return success_response(data=StravaSerializer(response).data)
         
         # Construct the authorize URL
         # https://www.strava.com/oauth/authorize?client_id=YOUR_CLIENT_ID&response_type=code&redirect_uri=http://yourdomain.com/exchange_token&approval_prompt=auto&scope=activity:read_all
@@ -75,6 +76,24 @@ class ExchangeToken(APIView):
         strava_athlete_id = response.json()['athlete']['id']
         strava_user = StravaUser.objects.create(user=user, strava_user_id=strava_athlete_id, 
                                                 access_token=strava_access_token, refresh_token=strava_refresh_token, expires_at=strava_token_expires_at)
+        
+        # Let's subscribe to updates via webhooks
+        subscription_url = 'https://www.strava.com/api/v3/push_subscription'
+
+        payload = {
+            'client_id': settings.STRAVA_CLIENT_ID,
+            'client_secret': settings.STRAVA_CLIENT_SECRET,
+            'callback_url': f'https://{settings.HOST}/api/strava/webhook',
+            'verify_token': 'a_secret_string_of_your_choice' # A secret token you create
+        }
+
+        try:
+            response = requests.post(url=subscription_url, data=payload)
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            print(f"Error creating webhook subscription: {e}")
+            print(f"Response body: {e.response.text}")
+
         # Redirect the user to a success page
         return render(request, 'strava/index.html')
         # return success_response(status=status.HTTP_201_CREATED)
@@ -97,4 +116,20 @@ class RefreshActivities(APIView):
         })
         print(response.status_code)
         print(response.json())
+
+class StravaWebhookView(APIView):
+    def get(self, request):
+        challenge = request.query_params.get('hub.challenge')
+        verify_token = request.query_params.get('hub.verify_token')
+
+        if challenge:
+            response_data = {'hub.challenge': challenge}
+            return success_response(data=response_data)
+        return error_response()
+    
+    def post(self, request):
+        print("Webhook event received:")
+        print(json.dumps(request.data, indent=2))
+
+        return success_response()
 
