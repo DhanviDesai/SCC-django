@@ -21,4 +21,6 @@ class HasRole(permissions.BasePermission):
 
 class IsAdminRole(permissions.BasePermission):
     def has_permission(self, request, view):
+        if request.method == 'GET':
+            return True
         return HasRole('ADMIN').has_permission(request, view)

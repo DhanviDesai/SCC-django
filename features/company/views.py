@@ -17,7 +17,7 @@ from features.utils.response_wrapper import success_response, error_response
 from rest_framework.pagination import PageNumberPagination
 from rest_framework import generics
 
-from .models import Company
+from .models import Company, CompanyStatus
 from .serializers import CompanySerializer
 
 # Create your views here.
@@ -47,26 +47,27 @@ class IndexOperations(APIView):
     authentication_classes = [FirebaseAuthentication]
     permission_classes = [IsAdminRole]
 
-    def get(self, request, company_id=None):
-        if company_id is None:
+    def get(self, request, id=None):
+        if id is None:
             queryset = Company.objects.all().order_by('company_name')
         else:
-            queryset = Company.objects.filter(company_id=company_id)
-        return success_response(data=CompanySerializer(queryset, many=True).data, message="Compnay list fetched")
+            queryset = Company.objects.filter(id=id)
+        return success_response(data=CompanySerializer(queryset, many=True).data, message="Compnay fetched")
 
-    def put(self, request, company_id):
+    def put(self, request, id):
         company_name = request.data.get('company_name')
         company_logo_link = request.data.get('company_logo_link')
-        company = Company.objects.get(company_id=company_id)
+        company = Company.objects.get(id=id)
         if company_name is not None:
             company.company_name = company_name
         if company_logo_link is not None:
             company.company_logo = company_logo_link
         company.save()
 
-    def delete(self, request, company_id):
-        company = Company.objects.get(company_id=company_id)
-        company.delete()
+    def delete(self, request, id):
+        company = Company.objects.get(id=id)
+        company.status = CompanyStatus.DELETED
+        company.save()
         return success_response(data=CompanySerializer(company).data, message="Company deleted")
 
 class GetPresignedUrl(APIView):

@@ -11,7 +11,7 @@ from rest_framework.pagination import PageNumberPagination
 from features.utils.storage import generate_presigned_url
 
 
-from . models import Sport
+from . models import Sport, SportStatus
 from .serializers import SportSerializer
 
 from features.sport_type.models import SportType
@@ -74,7 +74,8 @@ class IndexOperations(APIView):
         if sport_id is None:
             return error_response(message="sport_id cannot be null")
         sport = Sport.objects.get(id=sport_id)
-        sport.delete()
+        sport.status = SportStatus.DELETED
+        sport.save()
         return success_response(data=SportSerializer(sport).data, message="Sport deleted")
 
 class GetPresignedUrl(APIView):

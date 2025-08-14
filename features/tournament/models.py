@@ -12,6 +12,12 @@ class TournamentType(models.Model):
     id = models.UUIDField(primary_key=True)
     name = models.CharField(max_length=180)
 
+class TournamentStatus(models.TextChoices):
+    NA = "NA"
+    ACTIVE = "ACTIVE"
+    DELETED = "DELETED"
+    DRAFT = "DRAFT"
+
 class Tournament(models.Model):
     id = models.UUIDField(primary_key=True)
     name = models.CharField(max_length=128)
@@ -27,6 +33,10 @@ class Tournament(models.Model):
     schedule = models.CharField(max_length=256, null=True, default=None)
     user = models.ManyToManyField(User, related_name="tournament_user")
     team_size = models.IntegerField(default=None, null=True)
+    created_at = models.DateTimeField(null=True, default=None)
+    updated_at = models.DateTimeField(null=True, default=None)
+    status = models.CharField(max_length=20, choices=TournamentStatus.choices, default=TournamentStatus.ACTIVE)
+
 
     def isIndividual(self):
         return "individual" in self.type.name.lower()

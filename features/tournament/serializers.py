@@ -12,7 +12,7 @@ class TournamentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tournament
         fields = ['id', 'name', 'sport', 'season', 'type', 'start_date', 'end_date', 'registration_start_date', 'registration_end_date',
-                  'cities', 'description', 'total_registrants']
+                  'cities', 'description', 'total_registrants', 'created_at', 'updated_at', 'status']
     
     def get_total_registrants(self, obj):
         if obj.isIndividual():

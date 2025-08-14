@@ -17,10 +17,11 @@ from rest_framework import generics
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter
 
-from .models import User, Company
-from .serializers import UserSerializer
+from .models import User, GenderTypes
+from .serializers import UserSerializer, GenderTypeSerializer
 from features.tournament.models import Tournament
 from features.utils.response_wrapper import success_response, error_response
+from features.company.models import Company
 
 # Create your views here.
 class GetMe(APIView):
@@ -40,15 +41,42 @@ class GetMe(APIView):
             if request.data.get('dob') is not None:
                 user.dob = request.data.get('dob')
             if request.data.get('company') is not None:
-                user.company = Company.objects.get(company_id=request.data.get('company'))
+                user.company = Company.objects.get(id=request.data.get('company'))
             if request.data.get('employee_code') is not None:
                 user.employee_code = request.data.get('employee_code')
             if request.data.get('fcm_token') is not None:
                 user.fcm_token = request.data.get('fcm_token')
+            if request.data.get('gender') is not None:
+                try:
+                    gender = GenderTypes.objects.get(id=request.data.get('gender'))
+                    user.gender_type = gender
+                except GenderTypes.DoesNotExist:
+                    print("Gender does not exist")
             user.save()
             return success_response(UserSerializer(user).data, message="User updated", status=status.HTTP_200_OK)
         except Exception as e:
             return error_response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def get_serializer(self, *args, **kwargs):
+        return UserSerializer(*args, **kwargs)
+    
+    def options(self, request, *args, **kwargs):
+        """
+        Manually generate the metadata for an OPTIONS request.
+        """
+        # The metadata_class determines what the response should look like
+        meta = self.metadata_class()
+        
+        # We need to get the serializer and pass it to determine the actions
+        serializer = self.get_serializer()
+        data = meta.determine_metadata(request, self)
+        
+        # For a detail view, you'd typically want PUT/PATCH actions
+        data['actions'] = {
+            'PUT': meta.get_serializer_info(serializer)
+        }
+        
+        return Response(data)
 
 
 
@@ -58,12 +86,16 @@ class FirebaseLogin(APIView):
         firebase_token = request.data.get('firebase_token')
         if not firebase_token:
             return error_response(message="Firebase token not provided", status=status.HTTP_400_BAD_REQUEST)
+        fcm_token = request.data.get('fcm_token')
         uid = request.auth.get('user_id')
         email = request.auth.get('email')
         user, created = User.objects.get_or_create(firebase_uid=uid)
 
         # If user already exists, then just return saying yes
         if not created:
+            if not fcm_token:
+                user.fcm_token = fcm_token
+                user.save()
             return success_response(data=UserSerializer(user).data, status=status.HTTP_200_OK)
         
         user.email = email
@@ -171,3 +203,7 @@ class ListTournaments(APIView):
         # Get list of all the tournaments the user has registered to
         queryset = user.tournament_user.all()
         return success_response(data=TournamentSerializer(queryset, many=True).data, message="Tournaments fetched successfully")
+
+class ListGenderTypes(APIView):
+    def get(self, request):
+        return success_response(data=GenderTypeSerializer(GenderTypes.objects.all(), many=True).data)

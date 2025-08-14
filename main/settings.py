@@ -29,6 +29,7 @@ SECRET_KEY = 'django-insecure-pyh2+*hw#a$4&3%ezn@w#2&_%ymlfsb9-%(^hbp@x4m7pk(k@h
 DEBUG = True
 
 ALLOWED_HOSTS = [
+    os.getenv('DJANGO_HOST', 'localhost'),
     '.elasticbeanstalk.com',
     '*',
 ]
@@ -54,11 +55,14 @@ INSTALLED_APPS = [
     'features.city',
     'features.notifications',
     'features.team',
+    'features.news',
+    'features.strava',
 ]
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -145,7 +149,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -165,3 +171,17 @@ AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 AWS_REGION = os.getenv("AWS_REGION")
 AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
+
+STRAVA_OAUTH_URL = os.getenv("STRAVA_OAUTH_URL", "https://www.strava.com/oauth/authorize")
+STRAVA_CLIENT_ID = os.getenv("STRAVA_CLIENT_ID")
+STRAVA_CLIENT_SECRET = os.getenv("STRAVA_CLIENT_SECRET")
+STRAVA_BASE_URL = os.getenv("STRAVA_BASE_URL")
+
+HOST = os.getenv('HOST')
+
+# --- CELERY SETTINGS ---
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'

@@ -10,7 +10,7 @@ from rest_framework.pagination import PageNumberPagination
 from uuid import uuid4
 from rest_framework import status
 
-from .models import Tournament, TournamentType, OnlineIndividualData
+from .models import Tournament, TournamentType, OnlineIndividualData, TournamentStatus
 
 from .serializers import TournamentTypeSerializer, TournamentSerializer
 from features.season.models import Season
@@ -134,8 +134,9 @@ class DeleteTournament(APIView):
     permission_classes = [IsAdminRole]
     def delete(self, request, id):
         tournament = Tournament.objects.get(id=id)
+        tournament.status = TournamentStatus.DELETED
+        tournament.save()
         data = TournamentSerializer(tournament).data
-        tournament.delete()
         return success_response(data=data, message="Tournament Deleted")
 
 class RegisterTournament(APIView):
@@ -168,6 +169,7 @@ class ListRegistrants(APIView):
         return success_response(data=UserSerializer(queryset, many=True).data, message="Registrants fetched")
 
 class IndexOperations(APIView):
+    authentication_classes = [FirebaseAuthentication]
     def get(self, request, id=None):
         if id is None:
             return error_response(message="Tournament id cannot be null")
