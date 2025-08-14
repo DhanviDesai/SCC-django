@@ -77,23 +77,6 @@ class ExchangeToken(APIView):
         strava_athlete_id = response.json()['athlete']['id']
         strava_user = StravaUser.objects.create(user=user, strava_user_id=strava_athlete_id, 
                                                 access_token=strava_access_token, refresh_token=strava_refresh_token, expires_at=strava_token_expires_at)
-        
-        # Let's subscribe to updates via webhooks
-        subscription_url = 'https://www.strava.com/api/v3/push_subscriptions'
-
-        payload = {
-            'client_id': settings.STRAVA_CLIENT_ID,
-            'client_secret': settings.STRAVA_CLIENT_SECRET,
-            'callback_url': f'https://{settings.HOST}/api/strava/webhook',
-            'verify_token': 'a_secret_string_of_your_choice' # A secret token you create
-        }
-
-        try:
-            response = requests.post(url=subscription_url, data=payload)
-            response.raise_for_status()
-        except requests.exceptions.RequestException as e:
-            print(f"Error creating webhook subscription: {e}")
-            print(f"Response body: {e.response.text}")
 
         # Redirect the user to a success page
         return render(request, 'strava/index.html')

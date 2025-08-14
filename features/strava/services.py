@@ -31,5 +31,23 @@ def refresh_strava_token(strava_user: StravaUser):
         print(f"Error refreshing Strava token: {e}")
         # Handle the error, maybe by notifying the user to re-authenticate
         return None
+
+def set_up_webhook():
+    # Let's subscribe to updates via webhooks
+    subscription_url = 'https://www.strava.com/api/v3/push_subscriptions'
+
+    payload = {
+        'client_id': settings.STRAVA_CLIENT_ID,
+        'client_secret': settings.STRAVA_CLIENT_SECRET,
+        'callback_url': f'https://{settings.HOST}/api/strava/webhook',
+        'verify_token': 'a_secret_string_of_your_choice' # A secret token you create
+    }
+
+    try:
+        response = requests.post(url=subscription_url, data=payload)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"Error creating webhook subscription: {e}")
+        print(f"Response body: {e.response.text}")
         
 
