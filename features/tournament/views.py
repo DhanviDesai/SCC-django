@@ -169,7 +169,6 @@ class ListRegistrants(APIView):
         return success_response(data=UserSerializer(queryset, many=True).data, message="Registrants fetched")
 
 class IndexOperations(APIView):
-    authentication_classes = [FirebaseAuthentication]
     def get(self, request, id=None):
         if id is None:
             return error_response(message="Tournament id cannot be null")

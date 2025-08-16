@@ -7,6 +7,7 @@ from urllib.parse import urlunparse, urlencode, ParseResult
 from rest_framework import status
 import json
 from rest_framework.response import Response
+import logging
 
 from features.users.models import User
 from features.utils.authentication import FirebaseAuthentication
@@ -15,6 +16,8 @@ from features.utils.response_wrapper import success_response, error_response
 from .models import StravaUser
 from .serializers import StravaSerializer
 from .tasks import process_strava_event
+
+logger = logging.getLogger(__name__)
 
 # Create your views here.
 class GetAuthorize(APIView):
@@ -90,10 +93,12 @@ class ExchangeToken(APIView):
 
         try:
             response = requests.post(url=subscription_url, data=payload)
+            logger.info(response)
+            logger.info(response.json())
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
-            print(f"Error creating webhook subscription: {e}")
-            print(f"Response body: {e.response.text}")
+            logger.error(f"Error creating webhook subscription: {e}")
+            logger.error(f"Response body: {e.response.text}")
 
         # Redirect the user to a success page
         return render(request, 'strava/index.html')
@@ -123,7 +128,7 @@ class StravaWebhookView(APIView):
         challenge = request.GET.get('hub.challenge')
         verify_token = request.GET.get('hub.verify_token')
 
-        print(challenge)
+        logger.info(challenge)
 
         if challenge:
             response_data = {'hub.challenge': challenge}
@@ -131,8 +136,8 @@ class StravaWebhookView(APIView):
         return error_response()
     
     def post(self, request):
-        print("Webhook event received:")
-        print(json.dumps(request.data, indent=2))
+        logger.info("Webhook event received:")
+        logger.info(json.dumps(request.data, indent=2))
         process_strava_event.delay(request.data)
         return success_response()
 

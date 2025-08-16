@@ -23,6 +23,11 @@ from features.tournament.models import Tournament
 from features.utils.response_wrapper import success_response, error_response
 from features.company.models import Company
 
+import logging
+
+
+logger = logging.getLogger(__name__)
+
 # Create your views here.
 class GetMe(APIView):
     authentication_classes = [FirebaseAuthentication]
@@ -140,7 +145,7 @@ class ListFilteredUsers(generics.ListAPIView):
         if company_id is None:
             return error_response(message="Company id cannot be null")
         try:
-            target_company = Company.objects.get(company_id=company_id)
+            target_company = Company.objects.get(id=company_id)
         except Company.DoesNotExist:
             return error_response(message="Company not found", status=status.HTTP_404_NOT_FOUND)
         self.queryset = User.objects.filter(company=target_company)
@@ -206,4 +211,5 @@ class ListTournaments(APIView):
 
 class ListGenderTypes(APIView):
     def get(self, request):
+        logger.info("Returning gender types")
         return success_response(data=GenderTypeSerializer(GenderTypes.objects.all(), many=True).data)
