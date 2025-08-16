@@ -1,4 +1,4 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 import uuid
 from rest_framework import status
@@ -15,6 +15,7 @@ from datetime import datetime
 from unittest.mock import patch
 
 # Create your tests here.
+@override_settings(GOOGLE_CLOUD_PROJECT='test-project')
 class AcceptInviteAPITest(APITestCase):
 
     def setUp(self):
@@ -67,8 +68,9 @@ class AcceptInviteAPITest(APITestCase):
             updated_at=now
         )
 
+    @patch('features.utils.messaging.send_fcm_notification', return_value=True)
     @patch('features.utils.authentication.FirebaseAuthentication.authenticate')
-    def test_accept_invite_success_team_not_full(self, mock_authenticate):
+    def test_accept_invite_success_team_not_full(self, mock_authenticate, mock_send_fcm):
         """
         Tests the happy path: A user accepts, is added, but the team is not yet full.
         Team needs 3, has 1 member. After this, it will have 2
@@ -89,8 +91,9 @@ class AcceptInviteAPITest(APITestCase):
         self.assertIn(self.invitee, self.team.members.all())
         self.assertEqual(self.team.members.count(), 2)
     
+    @patch('features.utils.messaging.send_fcm_notification', return_value=True)
     @patch('features.utils.authentication.FirebaseAuthentication.authenticate')
-    def test_accept_invite_makes_team_full(self, mock_authenticate):
+    def test_accept_invite_makes_team_full(self, mock_authenticate, mock_send_fcm):
         """Tests the final member joining with mocked authentication."""
         # Configure the mock to "log in" the user accepting the invite
         current_user = self.invitee

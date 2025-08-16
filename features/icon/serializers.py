@@ -1,7 +1,11 @@
-from rest_framework.serializers import ModelSerializer
+from rest_framework import serializers
 from .models import Icon
 
-class IconSerializer(ModelSerializer):
+class IconSerializer(serializers.ModelSerializer):
+    file = serializers.FileField(write_only=True)
+    name = serializers.CharField(required=False)
+
     class Meta:
         model = Icon
-        fields = '__all__'
+        fields = ('id', 'name', 'url', 'file')
+        read_only_fields = ('url',)
