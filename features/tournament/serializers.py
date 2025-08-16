@@ -2,6 +2,11 @@ from rest_framework import serializers
 
 from . models import TournamentType, Tournament
 
+class NestedTournamentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tournament
+        fields = ['id', 'name', 'team_size']
+
 class TournamentTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = TournamentType

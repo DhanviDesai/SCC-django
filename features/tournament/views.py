@@ -42,7 +42,7 @@ class ListTournament(generics.ListAPIView):
         season_id = request.GET.get('season_id', None)
         if season_id is None:
             season_id = Season.objects.order_by('-created_at').first().id
-        self.queryset = Tournament.objects.filter(season=season_id)
+        self.queryset = Tournament.objects.filter(season=season_id).filter(status=TournamentStatus.ACTIVE)
         return super().get(self, request, *args, **kwargs)
 
 class AddTournament(APIView):
@@ -81,7 +81,7 @@ class AddTournament(APIView):
         team_size = request.data.get('team_size')
 
         type_obj = TournamentType.objects.get(id=type)
-        if "team" in type_obj.name and not team_size:
+        if "team" in type_obj.name.lower() and not team_size:
             return error_response(message="Team size cannot be null for team type tournament")
         sport_obj = Sport.objects.get(id=sport)
         season_obj = Season.objects.get(id=season)

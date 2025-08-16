@@ -1,12 +1,22 @@
 from . models import Team, Invite
 from rest_framework.serializers import ModelSerializer
 
-class TeamSerializer(ModelSerializer):
+from features.tournament.serializers import NestedTournamentSerializer
+
+class NestedTeamSerializer(ModelSerializer):
     class Meta:
         model = Team
-        fields = ['id', 'name', 'members', 'tournament']
+        fields =['id', 'name', 'is_registered']
+
+class TeamSerializer(ModelSerializer):
+    tournament = NestedTournamentSerializer(many=True, read_only=True)
+    class Meta:
+        model = Team
+        fields = ['id', 'name', 'members', 'tournament', 'is_registered']
 
 class InviteSerializer(ModelSerializer):
+    team = NestedTeamSerializer(read_only=True)
+    tournament = NestedTournamentSerializer(read_only=True)
     class Meta:
         model = Invite
-        fields = ['id', 'team', 'invitee', 'inviter', 'created_at']
+        fields = ['id', 'team', 'invitee', 'inviter', 'created_at', 'status', 'tournament']

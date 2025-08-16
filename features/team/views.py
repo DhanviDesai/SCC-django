@@ -96,18 +96,21 @@ class InviteUser(APIView):
         except Tournament.DoesNotExist:
             return error_response(message="Tournament not found", status=status.HTTP_404_NOT_FOUND)
         
+        if tournament is None:
+            return error_response(message="Tournament cannot be null")
+        
         invite_exists = Invite.objects.filter(team=team, tournament=tournament, inviter=inviter, invitee=invitee).exists()
         if invite_exists:
             return error_response(message="Invite already exists")
         now = datetime.now()
+        invite = Invite.objects.create(id=uuid4(), team=team, tournament=tournament, invitee=invitee, inviter=inviter, created_at=now, updated_at=now, status=InviteStatus.PENDING)
         # Send a notification to invitee
         if invitee.fcm_token:
             # NOTIFICATION
             body_message = f"You have been invited to join the team {team.name} for the tournament {tournament.name}"
             if send_fcm_notification(invitee.fcm_token, title="Team invite", body=body_message):
                 print("Notification successful")
-        invite = Invite.objects.create(id=uuid4(), team=team, tournament=tournament, invitee=invitee, inviter=inviter, created_at=now, updated_at=now, status=InviteStatus.PENDING)
-        return success_response(message="User invited successfully")
+        return success_response(message="User invited successfully", data=InviteSerializer(invite).data)
 
 class ListReceivedInvites(APIView):
     authentication_classes = [FirebaseAuthentication]
