@@ -13,6 +13,9 @@ from features.utils.messaging import send_fcm_notification
 
 from .models import Team, Invite, InviteStatus
 from .serializers import TeamSerializer, InviteSerializer
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Create your views here.
 class ListTeams(APIView):
@@ -69,7 +72,6 @@ class CreateTeam(APIView):
 class InviteUser(APIView):
     authentication_classes = [FirebaseAuthentication]
     def post(self, request, team_id=None):
-        print(f"Here in invite user {team_id}")
         if team_id is None:
             return error_response(message="Team id cannot be null")
         # These are the users being invited
@@ -109,7 +111,7 @@ class InviteUser(APIView):
             # NOTIFICATION
             body_message = f"You have been invited to join the team {team.name} for the tournament {tournament.name}"
             if send_fcm_notification(invitee.fcm_token, title="Team invite", body=body_message):
-                print("Notification successful")
+                logger.info("Notification successful")
         return success_response(message="User invited successfully", data=InviteSerializer(invite).data)
 
 class ListReceivedInvites(APIView):
@@ -168,7 +170,7 @@ class AcceptInvite(APIView):
             # NOTIFICATION
             body = f"Congrats! Your team {team.name} is registered to tournament {team.tournament.name}"
             if send_fcm_notification(team.created_by.fcm_token, title="Team registered", body=body):
-                print("Notification sent successfully")
+                logger.info("Notification sent successfully")
             # Invalidate all other invites for the same team and tournament
             Invite.objects.filter(team=invite.team, tournament=invite.tournament, status=InviteStatus.PENDING).update(status=InviteStatus.EXPIRED)
         return success_response(message="Invite accepted successfully", status=status.HTTP_200_OK)

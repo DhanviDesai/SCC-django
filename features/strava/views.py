@@ -96,13 +96,12 @@ class RefreshActivities(APIView):
 
         # Get the strava user
         strava_user = StravaUser.objects.get(user=user)
-        print(strava_user.access_token)
+        logger.info(strava_user.access_token)
 
         response = requests.get("https://www.strava.com/api/v3/athlete/activities", headers={
             'Authorization': f'Bearer {strava_user.access_token}'
         })
-        print(response.status_code)
-        print(response.json())
+        logger.info(response.status_code)
 
 class StravaWebhookView(APIView):
     def get(self, request):

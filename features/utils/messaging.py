@@ -1,4 +1,7 @@
 from firebase_admin import messaging, exceptions
+import logging
+
+logger = logging.getLogger(__name__)
 
 def send_fcm_notification(token: str, title: str, body: str, data: dict = None):
     """
@@ -20,10 +23,10 @@ def send_fcm_notification(token: str, title: str, body: str, data: dict = None):
             token=token
         )
         response = messaging.send(message)
-        print('Successfully sent message: ', response)
+        logger.info('Successfully sent message: ', response)
         return True
     except exceptions.FirebaseError as e:
-        print('Failed to send FCM message: ', e)
+        logger.error('Failed to send FCM message: ', e)
         if isinstance(e, (exceptions.UnregisteredError, exceptions.InvalidArgumentError)):
             # The token is invalid, so its better to delete it
             pass

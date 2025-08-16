@@ -56,7 +56,7 @@ class GetMe(APIView):
                     gender = GenderTypes.objects.get(id=request.data.get('gender'))
                     user.gender_type = gender
                 except GenderTypes.DoesNotExist:
-                    print("Gender does not exist")
+                    logger.error("Gender does not exist")
             user.save()
             return success_response(UserSerializer(user).data, message="User updated", status=status.HTTP_200_OK)
         except Exception as e:
@@ -141,7 +141,6 @@ class ListFilteredUsers(generics.ListAPIView):
 
     def get(self, request, *args, **kwargs):
         company_id = request.GET.get('company_id', None)
-        print(company_id)
         if company_id is None:
             return error_response(message="Company id cannot be null")
         try:

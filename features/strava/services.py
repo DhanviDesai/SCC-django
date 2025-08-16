@@ -3,9 +3,12 @@ from django.conf import settings
 from .models import StravaUser
 from django.utils import timezone
 from datetime import timedelta
+import logging
+
+logger = logging.getLogger(__name__)
 
 def refresh_strava_token(strava_user: StravaUser):
-    print(f"Refreshing token for user {strava_user.strava_user_id}...")
+    logger.info(f"Refreshing token for user {strava_user.strava_user_id}...")
 
     token_url = 'https://www.strava.com/api/v3/oauth/token'
 
@@ -25,10 +28,10 @@ def refresh_strava_token(strava_user: StravaUser):
         strava_user.refresh_token = new_token_data['refresh_token']
         strava_user.expires_at = new_token_data['expires_at']
         strava_user.save()
-        print("Token refreshed successfully")
+        logger.info("Token refreshed successfully")
         return strava_user
     except requests.exceptions.RequestException as e:
-        print(f"Error refreshing Strava token: {e}")
+        logger.error(f"Error refreshing Strava token: {e}")
         # Handle the error, maybe by notifying the user to re-authenticate
         return None
 
@@ -47,7 +50,7 @@ def set_up_webhook():
         response = requests.post(url=subscription_url, data=payload)
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
-        print(f"Error creating webhook subscription: {e}")
-        print(f"Response body: {e.response.text}")
+        logger.error(f"Error creating webhook subscription: {e}")
+        logger.error(f"Response body: {e.response.text}")
         
 
