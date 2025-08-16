@@ -9,4 +9,4 @@ class GenderTypeSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['firebase_uid', 'username', 'email', 'dob', 'company', 'employee_code', 'gender_type']
+        fields = ['firebase_uid', 'username', 'email', 'dob', 'company', 'employee_code', 'gender_type', 'strava_athlete_id']

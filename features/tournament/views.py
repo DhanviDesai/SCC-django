@@ -139,13 +139,12 @@ class DeleteTournament(APIView):
         data = TournamentSerializer(tournament).data
         return success_response(data=data, message="Tournament Deleted")
 
+# TODO: take in the user's strava profile link 
 class RegisterTournament(APIView):
     authentication_classes = [FirebaseAuthentication]
     def put(self, request, id=None):
         if id is None:
             return error_response(message="Tournament id cannot be none")
-        uid = request.auth.get("user_id")
-        user = User.objects.get(firebase_uid=uid)
         try:
             tournament = Tournament.objects.get(id=id)
         except Tournament.DoesNotExist:
@@ -153,6 +152,8 @@ class RegisterTournament(APIView):
         # Individual cannot register to a team based tournament
         if not tournament.isIndividual():
             return error_response(message="Tournament is of type team")
+        uid = request.auth.get("user_id")
+        user = User.objects.get(firebase_uid=uid)
         tournament.user.add(user)
         return success_response(data=UserSerializer(user).data, message="Successfully registered to tournament", status=status.HTTP_200_OK)
 

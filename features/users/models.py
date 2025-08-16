@@ -28,6 +28,7 @@ class User(models.Model):
     fcm_token = models.TextField(null=True)
     gender = models.CharField(max_length=20, choices=GenderChoices.choices, default=GenderChoices.NA)
     gender_type = models.ForeignKey(GenderTypes, on_delete=models.CASCADE, null=True, default=None)
+    strava_athlete_id = models.TextField(default=None, null=True)
 
     def __str__(self):
         return json.dumps({"user_id": self.firebase_uid, "email": self.email, "roles": str(self.role)})

@@ -22,11 +22,14 @@ from .serializers import UserSerializer, GenderTypeSerializer
 from features.tournament.models import Tournament
 from features.utils.response_wrapper import success_response, error_response
 from features.company.models import Company
+from . import services
 
 import logging
-
+import re
+import base64
 
 logger = logging.getLogger(__name__)
+url_pattern = re.compile(r'https?://\S+')
 
 # Create your views here.
 class GetMe(APIView):
@@ -51,6 +54,23 @@ class GetMe(APIView):
                 user.employee_code = request.data.get('employee_code')
             if request.data.get('fcm_token') is not None:
                 user.fcm_token = request.data.get('fcm_token')
+            if request.data.get('strava_profile') is not None:
+                link = base64.b64decode(request.data.get('strava_profile'))
+                link = link.decode('utf-8')
+                link = link.replace('\n', ' ')
+                # Get only the URL:
+                logger.info(link)
+                strava_profile = url_pattern.search(link)
+                logger.info(strava_profile)
+                if strava_profile is None:
+                    return error_response(message="strava_profile does not contain a valid strava profile link")
+                strava_profile_link = strava_profile.group(0)
+                if 'athletes' in strava_profile_link:
+                    athlete_id = strava_profile_link.strip('/').split('/')[-1]
+                else:
+                    athlete_id = services.get_strava_athlete_id(strava_profile_link)
+                logger.info(f"Found strava athlete id is {athlete_id}")
+                user.strava_athlete_id = athlete_id
             if request.data.get('gender') is not None:
                 try:
                     gender = GenderTypes.objects.get(id=request.data.get('gender'))
