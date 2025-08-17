@@ -27,7 +27,9 @@ class IconViewSet(viewsets.ModelViewSet):
         presigned_url, public_url = generate_presigned_url(file_name, file.content_type)
 
         try:
-            response = requests.put(presigned_url, data=file.read())
+            response = requests.put(presigned_url, headers={
+                'Content-Type': file.content_type
+            }, data=file.read())
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
             return error_response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
