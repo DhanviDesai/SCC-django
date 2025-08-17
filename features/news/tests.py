@@ -32,7 +32,7 @@ class NewsAPITests(TestCase):
         """
         with patch(self._get_mock_auth_path("ADMIN")) as mock_auth:
             mock_auth.return_value = (self.admin_user, {'roles': ['ADMIN'], 'uid': self.admin_user.firebase_uid})
-            url = reverse('add-news')
+            url = reverse('news-list')
             response = self.client.post(url, self.news_data, format='json')
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
             self.assertEqual(News.objects.count(), 1)
@@ -44,7 +44,7 @@ class NewsAPITests(TestCase):
         """
         with patch(self._get_mock_auth_path("USER")) as mock_auth:
             mock_auth.return_value = (self.regular_user, {'roles': ['USER'], 'uid': self.regular_user.firebase_uid})
-            url = reverse('add-news')
+            url = reverse('news-list')
             response = self.client.post(url, self.news_data, format='json')
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
@@ -61,7 +61,7 @@ class NewsAPITests(TestCase):
 
         with patch(self._get_mock_auth_path("USER")) as mock_auth:
             mock_auth.return_value = (self.regular_user, {'roles': ['USER'], 'uid': self.regular_user.firebase_uid})
-            url = reverse('list-news')
+            url = reverse('news-list')
             response = self.client.get(url, format='json')
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             self.assertEqual(len(response.data['results']), 2) # Normal News 1 and Carousel News 1
@@ -102,9 +102,9 @@ class NewsAPITests(TestCase):
         news = News.objects.create(**self.news_data)
         with patch(self._get_mock_auth_path("ADMIN")) as mock_auth:
             mock_auth.return_value = (self.admin_user, {'roles': ['ADMIN'], 'uid': self.admin_user.firebase_uid})
-            url = reverse('index-operations', kwargs={'id': news.id})
+            url = reverse('news-detail', kwargs={'pk': news.id})
             updated_data = {'title': 'Updated Title'}
-            response = self.client.put(url, updated_data, format='json')
+            response = self.client.patch(url, updated_data, format='json')
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             news.refresh_from_db()
             self.assertEqual(news.title, 'Updated Title')
@@ -116,7 +116,7 @@ class NewsAPITests(TestCase):
         news = News.objects.create(**self.news_data)
         with patch(self._get_mock_auth_path("ADMIN")) as mock_auth:
             mock_auth.return_value = (self.admin_user, {'roles': ['ADMIN'], 'uid': self.admin_user.firebase_uid})
-            url = reverse('index-operations', kwargs={'id': news.id})
+            url = reverse('news-detail', kwargs={'pk': news.id})
             response = self.client.delete(url)
-            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
             self.assertEqual(News.objects.count(), 0)

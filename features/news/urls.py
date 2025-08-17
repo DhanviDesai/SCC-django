@@ -1,9 +1,11 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from . import views
 
+router = DefaultRouter()
+router.register(r'', views.NewsViewSet, basename='news')
+
 urlpatterns = [
-    path("list", views.ListNews.as_view(), name='list-news'),
-    path("add", views.AddNews.as_view(), name='add-news'),
     path("carousel", views.ListCarousel.as_view(), name='list-carousel'),
-    path("<uuid:id>", views.IndexOperations.as_view(), name='index-operations'),
+    path("", include(router.urls)),
 ]

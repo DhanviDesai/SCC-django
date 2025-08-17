@@ -19,3 +19,15 @@ class NewsSerializer(serializers.ModelSerializer):
             except Icon.DoesNotExist:
                 raise serializers.ValidationError("Icon not found.")
         return News.objects.create(**validated_data)
+
+    def update(self, instance, validated_data):
+        icon_id = validated_data.pop('icon_id', None)
+        if icon_id:
+            try:
+                instance.icon = Icon.objects.get(id=icon_id)
+            except Icon.DoesNotExist:
+                raise serializers.ValidationError("Icon not found.")
+        elif 'icon_id' in self.initial_data and self.initial_data['icon_id'] is None:
+            instance.icon = None
+
+        return super().update(instance, validated_data)
