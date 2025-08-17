@@ -29,6 +29,7 @@ urlpatterns = [
     path('api/notifications/', include('features.notifications.urls')),
     path('api/team/', include('features.team.urls')),
     path('api/news/', include('features.news.urls')),
+    path('api/news', include('features.news.urls')),
     path('api/strava/', include('features.strava.urls')),
     path('api/metric/', include('features.metric.urls')),
     path('api/icons', include('features.icon.urls')),
