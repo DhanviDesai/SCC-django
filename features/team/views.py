@@ -169,7 +169,7 @@ class AcceptInvite(APIView):
             # Here, send the notification to the captain or team creater that his team is registered
             # NOTIFICATION
             body = f"Congrats! Your team {team.name} is registered to tournament {team.tournament.name}"
-            if send_fcm_notification(team.created_by.fcm_token, title="Team registered", body=body):
+            if team.created_by.fcm_token and send_fcm_notification(team.created_by.fcm_token, title="Team registered", body=body):
                 logger.info("Notification sent successfully")
             # Invalidate all other invites for the same team and tournament
             Invite.objects.filter(team=invite.team, tournament=invite.tournament, status=InviteStatus.PENDING).update(status=InviteStatus.EXPIRED)
