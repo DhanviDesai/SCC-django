@@ -36,6 +36,7 @@ class Tournament(models.Model):
     created_at = models.DateTimeField(null=True, default=None)
     updated_at = models.DateTimeField(null=True, default=None)
     status = models.CharField(max_length=20, choices=TournamentStatus.choices, default=TournamentStatus.ACTIVE)
+    strava_club_id = models.BigIntegerField(null=True, blank=True)
 
 
     def isIndividual(self):

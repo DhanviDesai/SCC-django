@@ -52,5 +52,39 @@ def set_up_webhook():
     except requests.exceptions.RequestException as e:
         logger.error(f"Error creating webhook subscription: {e}")
         logger.error(f"Response body: {e.response.text}")
+
+def get_club_activities(strava_user: StravaUser, club_id: int, after: int = None):
+    logger.info(f"Fetching activities for club {club_id}...")
+
+    if strava_user.expires_at < int(timezone.now().timestamp()):
+        strava_user = refresh_strava_token(strava_user)
+        if not strava_user:
+            return None
+
+    activities_url = f'https://www.strava.com/api/v3/clubs/{club_id}/activities'
+    headers = {'Authorization': f'Bearer {strava_user.access_token}'}
+
+    params = {'page': 1, 'per_page': 30}
+    if after:
+        params['after'] = after
         
+    all_activities = []
+
+    while True:
+        try:
+            response = requests.get(activities_url, headers=headers, params=params)
+            response.raise_for_status()
+            activities = response.json()
+
+            if not activities:
+                break
+
+            all_activities.extend(activities)
+            params['page'] += 1
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error fetching Strava club activities: {e}")
+            return None
+
+    return all_activities
 

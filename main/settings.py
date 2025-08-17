@@ -58,7 +58,8 @@ INSTALLED_APPS = [
     'features.news',
     'features.strava',
     'features.metric',
-    'features.icon'
+    'features.icon',
+    'features.leaderboard'
 ]
 
 MIDDLEWARE = [
@@ -201,3 +202,16 @@ CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
+
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    'sync-strava-activities-every-hour': {
+        'task': 'features.strava.tasks.sync_strava_club_activities',
+        'schedule': crontab(minute='0', hour='*'), # Run every hour
+    },
+    'update-leaderboards-every-hour': {
+        'task': 'features.leaderboard.tasks.update_leaderboards',
+        'schedule': crontab(minute='5', hour='*'), # Run every hour at 5 minutes past the hour
+    },
+}
