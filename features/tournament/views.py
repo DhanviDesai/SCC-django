@@ -19,6 +19,7 @@ from features.city.models import City
 from features.users.models import User
 from features.users.serializers import UserSerializer
 from features.utils.storage import generate_presigned_url
+from features.strava.models import StravaClub
 
 # Create your views here.
 class TournamentTypeIndexOperations(APIView):
@@ -207,6 +208,12 @@ class IndexOperations(APIView):
         team_size = request.data.get('team_size')
         if team_size:
             tournament.team_size = team_size
+        if request.data.get('club') is not None:
+            try:
+                club = StravaClub.objects.get(id=request.data.get('club'))
+            except StravaClub.DoesNotExist:
+                return error_response(message="Strava club not found")
+            tournament.club=club
         tournament.save()
         return success_response(data=TournamentSerializer(tournament).data, message="Tournament updated successfully")
 

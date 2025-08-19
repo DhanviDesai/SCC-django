@@ -17,3 +17,9 @@ class StravaActivity(models.Model):
     start_date = models.DateField()
     sport_type = models.CharField(max_length=20)
     details = models.JSONField()
+
+class StravaClub(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    club_name = models.TextField(null=False, default="")
+    club_id = models.TextField(null=False, blank=False)
+    club_link = models.URLField(null=False, blank=False)

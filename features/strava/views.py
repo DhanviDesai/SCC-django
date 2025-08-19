@@ -8,13 +8,15 @@ from rest_framework import status
 import json
 from rest_framework.response import Response
 import logging
+from rest_framework import viewsets
 
 from features.users.models import User
 from features.utils.authentication import FirebaseAuthentication
+from features.utils.permissions import IsAdminRole
 from features.utils.response_wrapper import success_response, error_response
 
-from .models import StravaUser
-from .serializers import StravaSerializer
+from .models import StravaUser, StravaClub
+from .serializers import StravaSerializer, StravaClubSerializer
 from .tasks import process_strava_event
 
 logger = logging.getLogger(__name__)
@@ -120,4 +122,16 @@ class StravaWebhookView(APIView):
         logger.info(json.dumps(request.data, indent=2))
         process_strava_event.delay(request.data)
         return success_response()
+
+class ClubViewSet(viewsets.ModelViewSet):
+    serializer_class = StravaClubSerializer
+    authentication_classes = [FirebaseAuthentication]
+    queryset = StravaClub.objects.all()
+
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            self.permission_classes = [IsAdminRole]
+        else:
+            self.permission_classes = []
+        return super().get_permissions()
 

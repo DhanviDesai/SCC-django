@@ -2,6 +2,8 @@ from rest_framework import serializers
 
 from . models import TournamentType, Tournament
 
+from features.strava.serializers import StravaClubSerializer
+
 class NestedTournamentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tournament
@@ -14,10 +16,12 @@ class TournamentTypeSerializer(serializers.ModelSerializer):
 
 class TournamentSerializer(serializers.ModelSerializer):
     total_registrants = serializers.SerializerMethodField()
+    type = TournamentTypeSerializer(read_only=True)
+    club = StravaClubSerializer(read_only=True)
     class Meta:
         model = Tournament
         fields = ['id', 'name', 'sport', 'season', 'type', 'start_date', 'end_date', 'registration_start_date', 'registration_end_date',
-                  'cities', 'description', 'total_registrants', 'created_at', 'updated_at', 'status', 'team_size']
+                  'cities', 'description', 'total_registrants', 'created_at', 'updated_at', 'status', 'team_size', 'club']
     
     def get_total_registrants(self, obj):
         if obj.isIndividual():
