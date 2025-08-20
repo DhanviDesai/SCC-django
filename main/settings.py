@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+import sys
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -113,23 +114,27 @@ LOGGING = {
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
+# Database
+# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': os.environ.get('DB_NAME', 'swedish_chamber'),
-        'USER': os.environ.get('DB_USERNAME', 'server'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', 'strong-password'),
-        'HOST': os.environ.get('DB_HOSTNAME', 'localhost'),
-        'PORT': os.environ.get('DB_PORT', '5432')
+if 'test' in sys.argv:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql_psycopg2',
+            'NAME': os.environ.get('DB_NAME', 'swedish_chamber'),
+            'USER': os.environ.get('DB_USERNAME', 'server'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', 'strong-password'),
+            'HOST': os.environ.get('DB_HOSTNAME', 'localhost'),
+            'PORT': os.environ.get('DB_PORT', '5432')
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -201,3 +206,9 @@ CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
+CELERY_BEAT_SCHEDULE = {
+    'sync-strava-activities-every-hour': {
+        'task': 'features.strava.tasks.sync_strava_activities',
+        'schedule': 3600.0, # every hour
+    },
+}

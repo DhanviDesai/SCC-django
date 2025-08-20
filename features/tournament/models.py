@@ -38,6 +38,7 @@ class Tournament(models.Model):
     updated_at = models.DateTimeField(null=True, default=None)
     status = models.CharField(max_length=20, choices=TournamentStatus.choices, default=TournamentStatus.ACTIVE)
     club = models.ForeignKey(StravaClub, null=True, default=None, on_delete=models.SET_NULL)
+    last_synced_at = models.DateTimeField(null=True, blank=True)
 
 
     def isIndividual(self):
@@ -59,4 +60,17 @@ class OnlineIndividualData(models.Model):
     data = models.IntegerField(default=-1)
     entry_date = models.DateField(db_index=True, null=True)
 
+class TournamentActivity(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    strava_activity_id = models.BigIntegerField()
+    distance = models.FloatField(default=0)
+    moving_time = models.IntegerField()
+    elapsed_time = models.IntegerField()
+    start_date = models.DateTimeField()
+    sport_type = models.CharField(max_length=50)
+    name = models.CharField(max_length=255, default=None)
 
+    class Meta:
+        unique_together = ('tournament', 'strava_activity_id')

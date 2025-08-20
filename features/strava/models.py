@@ -14,6 +14,7 @@ class StravaUser(models.Model):
 
 class StravaActivity(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    strava_activity_id = models.BigIntegerField(unique=True, default=None)
     start_date = models.DateField()
     sport_type = models.CharField(max_length=20)
     details = models.JSONField()
