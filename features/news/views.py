@@ -23,7 +23,6 @@ class NewsPagination(PageNumberPagination):
 class NewsViewSet(viewsets.ModelViewSet):
     serializer_class = NewsSerializer
     pagination_class = NewsPagination
-    authentication_classes = [FirebaseAuthentication]
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ['title']
     search_fields = ['^title']
@@ -44,6 +43,13 @@ class NewsViewSet(viewsets.ModelViewSet):
         else:
             self.permission_classes = []
         return super().get_permissions()
+    
+    def get_authenticators(self):
+        if self.request.method == 'GET':
+            authentication_classes = []
+        else:
+            authentication_classes = [FirebaseAuthentication]
+        return [auth() for auth in authentication_classes]
 
 class ListCarousel(APIView):
     authentication_classes = [FirebaseAuthentication]
