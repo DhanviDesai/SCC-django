@@ -6,6 +6,7 @@ from features.city.models import City
 from features.sport.models import Sport
 from features.season.models import Season
 from features.users.models import User
+from features.activity.models import ActivityConfig
 
 # Create your models here.
 class TournamentType(models.Model):
@@ -36,6 +37,7 @@ class Tournament(models.Model):
     created_at = models.DateTimeField(null=True, default=None)
     updated_at = models.DateTimeField(null=True, default=None)
     status = models.CharField(max_length=20, choices=TournamentStatus.choices, default=TournamentStatus.ACTIVE)
+    activity = models.ForeignKey(ActivityConfig, on_delete=models.SET_NULL, null=True, default=None, related_name="tournament_activity", db_index=True)
 
 
     def isIndividual(self):

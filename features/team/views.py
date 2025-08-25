@@ -2,7 +2,7 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework import status
 from uuid import uuid4
-from datetime import datetime
+from datetime import datetime, timezone
 
 from features.utils.authentication import FirebaseAuthentication
 from features.utils.permissions import IsAdminRole
@@ -61,13 +61,22 @@ class CreateTeam(APIView):
             target_tournament = Tournament.objects.get(id=tournament)
         except Tournament.DoesNotExist:
             return error_response(message="Tournament not found")
-        is_registered = user.members.filter(tournament=target_tournament).exists()
+        # Check if the tournament is of type team
+        if not target_tournament.isTeam():
+            return error_response(message="Tournament is not a team tournament")
+        
+        # Check if the user has already created a team for the tournament
+        if target_tournament.tournament_team.filter(created_by=user).exists():
+            return error_response(message="You have already created a team for this tournament")
+
+        # Check if the user is already registered for the tournament which is registered
+        is_registered = user.members.filter(tournament=target_tournament, is_registered=True).exists()
         if is_registered:
             return error_response(message="User is already part of a team for the tournament")
         team = Team.objects.create(id=uuid4(), name=team_name, created_by=user)
         team.members.add(user)
         team.tournament.add(target_tournament)
-        return success_response(data=TeamSerializer(team).data, message="Successfully created a team", status=status.HTTP_200_OK)
+        return success_response(data=TeamSerializer(team).data, message="Successfully created a team", status=status.HTTP_201_CREATED)
 
 class InviteUser(APIView):
     authentication_classes = [FirebaseAuthentication]
@@ -90,6 +99,8 @@ class InviteUser(APIView):
             team = Team.objects.get(id=team_id)
         except:
             return error_response(message="Team not found")
+        if invitee in team.members.all():
+            return error_response(message="User is already a member of the team")
         tournament_id = request.data.get('tournament_id')
         if tournament_id is None:
             return error_response(message="Tournament id cannot be null")
@@ -103,8 +114,8 @@ class InviteUser(APIView):
         
         invite_exists = Invite.objects.filter(team=team, tournament=tournament, inviter=inviter, invitee=invitee).exists()
         if invite_exists:
-            return error_response(message="Invite already exists")
-        now = datetime.now()
+            return error_response(message="User has already been invited")
+        now = datetime.now(tz=timezone.utc)
         invite = Invite.objects.create(id=uuid4(), team=team, tournament=tournament, invitee=invitee, inviter=inviter, created_at=now, updated_at=now, status=InviteStatus.PENDING)
         # Send a notification to invitee
         if invitee.fcm_token:
@@ -112,7 +123,7 @@ class InviteUser(APIView):
             body_message = f"You have been invited to join the team {team.name} for the tournament {tournament.name}"
             if send_fcm_notification(invitee.fcm_token, title="Team invite", body=body_message):
                 logger.info("Notification successful")
-        return success_response(message="User invited successfully", data=InviteSerializer(invite).data)
+        return success_response(message="User invited successfully", data=InviteSerializer(invite).data, status=status.HTTP_201_CREATED)
 
 class ListReceivedInvites(APIView):
     authentication_classes = [FirebaseAuthentication]
@@ -138,28 +149,54 @@ class AcceptInvite(APIView):
     def put(self, request, invite_id=None):
         # Update the invite status to accepted
         # Add the user as a member into the team
-        # Just call the registerTournament endpoint
         if not invite_id:
             return error_response(message="Invite id cannot be null")
         try:
             invite = Invite.objects.get(id=invite_id)
         except Invite.DoesNotExist:
+            logger.error("Invite not found with id: %s", invite_id)
             return error_response(message="Invite not found", status=status.HTTP_404_NOT_FOUND)
         
         if not invite.status == InviteStatus.PENDING:
             return error_response(message="Invite is invalid")
         
+        # Check if the team is already registered for the tournament
+        if invite.team.is_registered:
+            # Update the invite status to expired
+            invite.status = InviteStatus.EXPIRED
+            invite.updated_at = datetime.now(tz=timezone.utc)
+            invite.save()
+            return error_response(message="Team is already registered for the tournament", status=status.HTTP_400_BAD_REQUEST)
+        
         # This is the user who accepted the invite
-        user = request.auth.get('user_id')
+        user = User.objects.get(firebase_uid=request.auth.get('user_id'))
 
-        # Update the invite status
-        invite.status = InviteStatus.ACCEPTED
-        invite.save()
+        # Check if the user is already a member of the team
+        if user in invite.team.members.all():
+            # Update the invite status to expired
+            invite.status = InviteStatus.EXPIRED
+            invite.updated_at = datetime.now(tz=timezone.utc)
+            invite.save()
+            return error_response(message="User is already a member of the team", status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check if the team is full
+        if invite.team.members.count() >= invite.tournament.team_size:
+            # Update the invite status to expired
+            invite.status = InviteStatus.EXPIRED
+            invite.updated_at = datetime.now(tz=timezone.utc)
+            invite.save()
+            return error_response(message="Team is already full", status=status.HTTP_400_BAD_REQUEST)
 
         # Add the user as a team member
         team = invite.team
         team.members.add(user)
         team.save()
+
+        # Update the invite status
+        invite.status = InviteStatus.ACCEPTED
+        invite.updated_at = datetime.now(tz=timezone.utc)
+        invite.save()
+        # invite.objects.update(status=InviteStatus.ACCEPTED, updated_at=datetime.now(tz=timezone.utc))
 
         # Check if team has enough members and register if it has enough
         if invite.team.members.count() == invite.tournament.team_size:

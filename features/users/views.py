@@ -14,6 +14,7 @@ from features.tournament.serializers import TournamentSerializer
 
 from rest_framework.pagination import PageNumberPagination
 from rest_framework import generics
+from django_filters import rest_framework as filters
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter
 
@@ -125,6 +126,14 @@ class ListUsers(APIView):
         serializer = UserSerializer(users, many=True)
         return success_response(data=serializer.data, message="User list fetched")
 
+class UserFilter(filters.FilterSet):
+    company = filters.NumberFilter(field_name='company__id', lookup_expr='exact')
+    username = filters.CharFilter(field_name='username', lookup_expr='istartswith')
+    class Meta:
+        model = User
+        fields = ['company', 'username']
+
+
 class UserPagination(PageNumberPagination):
     page_size = 5
     page_size_query_param = 'page_size'
@@ -136,19 +145,9 @@ class ListFilteredUsers(generics.ListAPIView):
     serializer_class = UserSerializer
     pagination_class = UserPagination
     filter_backends = [DjangoFilterBackend, SearchFilter]
-    filterset_fields = ['username']
+    filterset_class = UserFilter
     search_fields = ['^username']
-
-    def get(self, request, *args, **kwargs):
-        company_id = request.GET.get('company_id', None)
-        if company_id is None:
-            return error_response(message="Company id cannot be null")
-        try:
-            target_company = Company.objects.get(id=company_id)
-        except Company.DoesNotExist:
-            return error_response(message="Company not found", status=status.HTTP_404_NOT_FOUND)
-        self.queryset = User.objects.filter(company=target_company)
-        return super().get(self, request, *args, **kwargs)
+    queryset = User.objects.all()
         
 
 class AdminLogin(APIView):

@@ -33,4 +33,6 @@ urlpatterns = [
     path('api/strava/', include('features.strava.urls')),
     path('api/metric/', include('features.metric.urls')),
     path('api/icons', include('features.icon.urls')),
+    path('api/activities/', include('features.activity.urls')),
+    path('api/leaderboard/', include('features.leaderboard.urls')),
 ]
