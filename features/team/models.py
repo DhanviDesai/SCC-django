@@ -28,3 +28,6 @@ class Invite(models.Model):
     updated_at = models.DateTimeField()
     tournament = models.ForeignKey(Tournament, null=True, blank=True, on_delete=models.SET_NULL, default=None)
     status = models.CharField(max_length=10, choices=InviteStatus.choices, default=InviteStatus.NA)
+
+    class Meta:
+        unique_together = ('team', 'inviter', 'invitee', 'tournament')

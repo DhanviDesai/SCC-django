@@ -1,14 +1,22 @@
 from django.shortcuts import render
+from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from features.utils.authentication import FirebaseAuthentication
 from features.utils.response_wrapper import success_response, error_response
 from features.users.models import User
+from features.utils.permissions import IsAdminRole
 from datetime import datetime
 
-from .models import StepMetric
-from .serializers import StepMetricSerializer
+from .models import StepMetric, MetricConfig
+from .serializers import StepMetricSerializer, MetricConfigSerializer
 
 # Create your views here.
+
+class MetricConfigViewSet(viewsets.ModelViewSet):
+    authentication_classes = [FirebaseAuthentication]
+    permission_classes = [IsAdminRole]
+    queryset = MetricConfig.objects.all()
+    serializer_class = MetricConfigSerializer
 
 
 class StepMetricView(APIView):

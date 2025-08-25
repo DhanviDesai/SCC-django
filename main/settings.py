@@ -58,7 +58,9 @@ INSTALLED_APPS = [
     'features.news',
     'features.strava',
     'features.metric',
-    'features.icon'
+    'features.icon',
+    'features.activity',
+    'features.leaderboard',
 ]
 
 MIDDLEWARE = [

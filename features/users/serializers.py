@@ -6,6 +6,11 @@ class GenderTypeSerializer(serializers.ModelSerializer):
         model = GenderTypes
         fields = '__all__'
 
+class NestedUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model= User
+        fields = ['firebase_uid', 'username']
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User

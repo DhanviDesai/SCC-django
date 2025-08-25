@@ -19,6 +19,7 @@ from features.city.models import City
 from features.users.models import User
 from features.users.serializers import UserSerializer
 from features.utils.storage import generate_presigned_url
+from features.activity.models import ActivityConfig
 
 # Create your views here.
 class TournamentTypeIndexOperations(APIView):
@@ -206,6 +207,13 @@ class IndexOperations(APIView):
         team_size = request.data.get('team_size')
         if team_size:
             tournament.team_size = team_size
+        activity_id = request.data.get('activity')
+        if activity_id:
+            try:
+                activity = ActivityConfig.objects.get(id=activity_id)
+                tournament.activity = activity
+            except ActivityConfig.DoesNotExist:
+                return error_response(message="Activity not found", status=status.HTTP_404_NOT_FOUND)
         tournament.save()
         return success_response(data=TournamentSerializer(tournament).data, message="Tournament updated successfully")
 
