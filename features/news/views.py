@@ -52,7 +52,6 @@ class NewsViewSet(viewsets.ModelViewSet):
         return [auth() for auth in authentication_classes]
 
 class ListCarousel(APIView):
-    authentication_classes = [FirebaseAuthentication]
 
     def get(self, request):
         carousel_news = News.objects.filter(is_carousel=True).order_by('-created_at')[:3]
