@@ -99,9 +99,7 @@ class FirebaseLogin(APIView):
 
         # If user already exists, then just return saying yes
         if not created:
-            if not fcm_token:
-                user.fcm_token = fcm_token
-                user.save()
+            User.objects.filter(firebase_uid=uid).update(fcm_token=fcm_token)
             return success_response(data=UserSerializer(user).data, status=status.HTTP_200_OK)
         
         user.email = email
