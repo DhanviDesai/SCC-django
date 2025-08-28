@@ -154,6 +154,9 @@ class RegisterTournament(APIView):
         # Individual cannot register to a team based tournament
         if not tournament.isIndividual():
             return error_response(message="Tournament is of type team")
+        # Check whether the user has registered to this tournament
+        if tournament.user.filter(firebase_uid=uid).exists():
+            return error_response(message="User has already registered to this tournament")
         tournament.user.add(user)
         return success_response(data=UserSerializer(user).data, message="Successfully registered to tournament", status=status.HTTP_200_OK)
 
