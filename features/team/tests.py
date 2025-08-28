@@ -11,8 +11,11 @@ from features.sport.models import Sport
 from features.sport_type.models import SportType
 from .models import Team, Invite, InviteStatus
 from datetime import datetime, timezone
+import logging
 
 from unittest.mock import patch
+
+logger = logging.getLogger(__name__)
 
 # Create your tests here.
 @override_settings(GOOGLE_CLOUD_PROJECT='test-project')
@@ -45,7 +48,7 @@ class AcceptInviteAPITest(APITestCase):
         self.team_tournament = Tournament.objects.create(
             id=uuid.uuid4(),
             name="tournament1",
-            team_size=2,
+            team_size=3,
             season=self.season,
             sport=self.sport,
             type=self.tournament_type_team
@@ -342,13 +345,225 @@ class AcceptInviteAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         team.refresh_from_db()
         self.assertIn(self.invitee, team.members.all())
-        self.assertTrue(team.is_registered)
+        self.assertFalse(team.is_registered)
         self.assertEqual(team.members.count(), 2)
         invite.refresh_from_db()
         self.assertEqual(invite.status, InviteStatus.ACCEPTED)
 
-    # def test_accept_invite_not_pending(self):
-    # def test_accept_invite_after_team_full(self):
+    def test_accept_invite_after_team_full(self):
+        """
+        Tests that a user cannot accept an invite if the team is already full.
+        """
+        # Create a team via model
+        team = Team.objects.create(id=uuid.uuid4(), name="Test Team", created_by=self.inviter)
+        team.tournament.add(self.team_tournament)
+        team.members.add(self.inviter)
+        another_member = User.objects.create(firebase_uid="789", username="789")
+        team.members.add(another_member)
+        third_member = User.objects.create(firebase_uid="890", username="890")
+        team.members.add(third_member)
+        team.save()
+
+        logging.info(f"Is team registered?: {team.is_registered}")
+        
+        # Create an invite to the team via model
+        invite = Invite.objects.create(
+            id=uuid.uuid4(),
+            team=team,
+            tournament=self.team_tournament,
+            inviter=self.inviter,
+            invitee=self.invitee,
+            status=InviteStatus.PENDING,
+            created_at=datetime.now(tz=timezone.utc),
+            updated_at=datetime.now(tz=timezone.utc)
+        )
+
+        current_user = self.invitee
+        fake_auth_payload = {
+            'user_id': str(current_user.pk)
+        }
+
+        with patch('features.utils.authentication.FirebaseAuthentication.authenticate', return_value=(current_user, fake_auth_payload)):
+            # Attempt to accept the invite
+            url = reverse('accept-invite', kwargs={'invite_id': invite.id})
+            response = self.client.put(url)
+
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+            self.assertIn('Team is already full', response.data['message'])
+
+    def test_accept_invite_not_pending(self):
+        """
+        Tests that a user cannot accept an invite that is not pending.
+        """
+        # Create a team via model
+        team = Team.objects.create(id=uuid.uuid4(), name="Test Team", created_by=self.inviter)
+        team.tournament.add(self.team_tournament)
+        team.members.add(self.inviter)
+        team.save()
+        
+        # Create an invite to the team via model with status ACCEPTED
+        invite = Invite.objects.create(
+            id=uuid.uuid4(),
+            team=team,
+            tournament=self.team_tournament,
+            inviter=self.inviter,
+            invitee=self.invitee,
+            status=InviteStatus.ACCEPTED,
+            created_at=datetime.now(tz=timezone.utc),
+            updated_at=datetime.now(tz=timezone.utc)
+        )
+
+        current_user = self.invitee
+        fake_auth_payload = {
+            'user_id': str(current_user.pk)
+        }
+
+        with patch('features.utils.authentication.FirebaseAuthentication.authenticate', return_value=(current_user, fake_auth_payload)):
+            # Attempt to accept the invite
+            url = reverse('accept-invite', kwargs={'invite_id': invite.id})
+            response = self.client.put(url)
+
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+            self.assertIn('Invite is invalid', response.data['message'])
+    
+    def test_team_register_once_team_full(self):
+        """
+        Tests that a team is marked as registered once it is full.
+        """
+        # Create a team via model
+        team = Team.objects.create(id=uuid.uuid4(), name="Test Team", created_by=self.inviter)
+        team.tournament.add(self.team_tournament)
+        team.members.add(self.inviter)
+        another_member = User.objects.create(firebase_uid="789", username="789")
+        team.members.add(another_member)
+        team.save()
+        
+        # Create an invite to the team via model
+        invite = Invite.objects.create(
+            id=uuid.uuid4(),
+            team=team,
+            tournament=self.team_tournament,
+            inviter=self.inviter,
+            invitee=self.invitee,
+            status=InviteStatus.PENDING,
+            created_at=datetime.now(tz=timezone.utc),
+            updated_at=datetime.now(tz=timezone.utc)
+        )
+
+        current_user = self.invitee
+        fake_auth_payload = {
+            'user_id': str(current_user.pk)
+        }
+
+        with patch('features.utils.authentication.FirebaseAuthentication.authenticate', return_value=(current_user, fake_auth_payload)):
+            # Accept the invite
+            url = reverse('accept-invite', kwargs={'invite_id': invite.id})
+            response = self.client.put(url)
+
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            team.refresh_from_db()
+            self.assertIn(self.invitee, team.members.all())
+            self.assertTrue(team.is_registered)
+            self.assertEqual(team.members.count(), 3)
+            invite.refresh_from_db()
+            self.assertEqual(invite.status, InviteStatus.ACCEPTED)
+
+    def test_other_invites_expired_once_team_registered(self):
+        """
+        Tests that other pending invites are marked as expired once the team is registered.
+        """
+        # Create a team via model
+        team = Team.objects.create(id=uuid.uuid4(), name="Test Team", created_by=self.inviter)
+        team.tournament.add(self.team_tournament)
+        team.members.add(self.inviter)
+        another_member = User.objects.create(firebase_uid="789", username="789")
+        team.members.add(another_member)
+        team.save()
+        
+        # Create an invite to the team via model
+        invite = Invite.objects.create(
+            id=uuid.uuid4(),
+            team=team,
+            tournament=self.team_tournament,
+            inviter=self.inviter,
+            invitee=self.invitee,
+            status=InviteStatus.PENDING,
+            created_at=datetime.now(tz=timezone.utc),
+            updated_at=datetime.now(tz=timezone.utc)
+        )
+
+        other_invite = Invite.objects.create(
+            id=uuid.uuid4(),
+            team=team,
+            tournament=self.team_tournament,
+            inviter=self.inviter,
+            invitee=self.other_pending_invitee,
+            status=InviteStatus.PENDING,
+            created_at=datetime.now(tz=timezone.utc),
+            updated_at=datetime.now(tz=timezone.utc)
+        )
+
+        current_user = self.invitee
+        fake_auth_payload = {
+            'user_id': str(current_user.pk)
+        }
+
+        with patch('features.utils.authentication.FirebaseAuthentication.authenticate', return_value=(current_user, fake_auth_payload)):
+            # Accept the invite
+            url = reverse('accept-invite', kwargs={'invite_id': invite.id})
+            response = self.client.put(url)
+
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            team.refresh_from_db()
+            self.assertIn(self.invitee, team.members.all())
+            self.assertTrue(team.is_registered)
+            self.assertEqual(team.members.count(), 3)
+            invite.refresh_from_db()
+            self.assertEqual(invite.status, InviteStatus.ACCEPTED)
+
+            other_invite.refresh_from_db()
+            self.assertEqual(other_invite.status, InviteStatus.EXPIRED)
+
+    def test_reject_invite(self):
+        """
+        Tests that a user can reject an invite.
+        """
+        # Create a team via model
+        team = Team.objects.create(id=uuid.uuid4(), name="Test Team", created_by=self.inviter)
+        team.tournament.add(self.team_tournament)
+        team.members.add(self.inviter)
+        team.save()
+        
+        # Create an invite to the team via model
+        invite = Invite.objects.create(
+            id=uuid.uuid4(),
+            team=team,
+            tournament=self.team_tournament,
+            inviter=self.inviter,
+            invitee=self.invitee,
+            status=InviteStatus.PENDING,
+            created_at=datetime.now(tz=timezone.utc),
+            updated_at=datetime.now(tz=timezone.utc)
+        )
+
+        current_user = self.invitee
+        fake_auth_payload = {
+            'user_id': str(current_user.pk)
+        }
+
+        with patch('features.utils.authentication.FirebaseAuthentication.authenticate', return_value=(current_user, fake_auth_payload)):
+            # Reject the invite
+            url = reverse('reject-invite', kwargs={'invite_id': invite.id})
+            response = self.client.put(url)
+
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            team.refresh_from_db()
+            self.assertNotIn(self.invitee, team.members.all())
+            self.assertFalse(team.is_registered)
+            self.assertEqual(team.members.count(), 1)
+            invite.refresh_from_db()
+            self.assertEqual(invite.status, InviteStatus.REJECTED)
+
     # def test_accept_invite_invalid(self):
 
 

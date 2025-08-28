@@ -160,14 +160,6 @@ class AcceptInvite(APIView):
         if not invite.status == InviteStatus.PENDING:
             return error_response(message="Invite is invalid")
         
-        # Check if the team is already registered for the tournament
-        if invite.team.is_registered:
-            # Update the invite status to expired
-            invite.status = InviteStatus.EXPIRED
-            invite.updated_at = datetime.now(tz=timezone.utc)
-            invite.save()
-            return error_response(message="Team is already registered for the tournament", status=status.HTTP_400_BAD_REQUEST)
-        
         # This is the user who accepted the invite
         user = User.objects.get(firebase_uid=request.auth.get('user_id'))
 
@@ -188,9 +180,8 @@ class AcceptInvite(APIView):
             return error_response(message="Team is already full", status=status.HTTP_400_BAD_REQUEST)
 
         # Add the user as a team member
-        team = invite.team
-        team.members.add(user)
-        team.save()
+        invite.team.members.add(user)
+        invite.team.save()
 
         # Update the invite status
         invite.status = InviteStatus.ACCEPTED
@@ -200,13 +191,13 @@ class AcceptInvite(APIView):
 
         # Check if team has enough members and register if it has enough
         if invite.team.members.count() == invite.tournament.team_size:
-            team.is_registered = True
-            team.save()
+            invite.team.is_registered = True
+            invite.team.save()
 
             # Here, send the notification to the captain or team creater that his team is registered
             # NOTIFICATION
-            body = f"Congrats! Your team {team.name} is registered to tournament {team.tournament.name}"
-            if team.created_by.fcm_token and send_fcm_notification(team.created_by.fcm_token, title="Team registered", body=body):
+            body = f"Congrats! Your team {invite.team.name} is registered to tournament {invite.team.tournament.name}"
+            if invite.team.created_by.fcm_token and send_fcm_notification(invite.team.created_by.fcm_token, title="Team registered", body=body):
                 logger.info("Notification sent successfully")
             # Invalidate all other invites for the same team and tournament
             Invite.objects.filter(team=invite.team, tournament=invite.tournament, status=InviteStatus.PENDING).update(status=InviteStatus.EXPIRED)
