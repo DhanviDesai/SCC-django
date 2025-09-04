@@ -158,6 +158,7 @@ class RegisterTournament(APIView):
         if tournament.user.filter(firebase_uid=uid).exists():
             return error_response(message="User has already registered to this tournament")
         tournament.user.add(user)
+        tournament.save()
         return success_response(data=UserSerializer(user).data, message="Successfully registered to tournament", status=status.HTTP_200_OK)
 
 class ListRegistrants(APIView):

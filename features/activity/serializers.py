@@ -26,7 +26,7 @@ class ActivityDataSerializer(serializers.ModelSerializer):
     activity = ActivityConfigReadSerializer()
     class Meta:
         model = ActivityData
-        fields = ['user', 'activity', 'start_datetime', 'end_datetime', 'metrics']
+        fields = ['user', 'activity', 'start_date', 'end_date', 'metrics']
     
     def get_metrics(self, obj):
         activity_metrics = ActivityMetric.objects.filter(activity_data=obj)
