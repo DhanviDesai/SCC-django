@@ -200,7 +200,7 @@ class LeaderboardTest(APITestCase):
         # Get the leaderboard for the team tournament with a date range that excludes user3's data
         url = reverse('get-leaderboard', kwargs={'tournament_id': self.individual_tournament.id})
         params = {
-            'start_date': (datetime.now() - timedelta(days=5)).date().isoformat(),
+            'start_date': (datetime.now()).date().isoformat(),
             'end_date': (datetime.now() + timedelta(days=1)).date().isoformat()
         }
         response = self.client.get(url, params)

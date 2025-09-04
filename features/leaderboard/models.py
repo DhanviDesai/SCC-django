@@ -9,6 +9,9 @@ class Leaderboard(models.Model):
     tournament = models.ForeignKey(Tournament, on_delete=models.SET_NULL, null=True)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     rank = models.BigIntegerField()
+    total_score = models.BigIntegerField(default=0)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
 
     class Meta:
         unique_together = ('tournament', 'user')
@@ -17,6 +20,9 @@ class TeamLeaderboard(models.Model):
     tournament = models.ForeignKey(Tournament, on_delete=models.SET_NULL, null=True)
     team = models.ForeignKey(Team, on_delete=models.SET_NULL, null=True)
     rank = models.BigIntegerField()
+    total_score = models.BigIntegerField(default=0)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
 
     class Meta:
         unique_together = ('tournament', 'team')

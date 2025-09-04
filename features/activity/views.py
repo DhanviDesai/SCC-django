@@ -22,6 +22,12 @@ class ActivityConfigViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminRole]
     queryset = ActivityConfig.objects.all()
 
+    # Handle OPTIONS request and return allowed methods with 204 status
+    def options(self, request, *args, **kwargs):
+        response = super().options(request, *args, **kwargs)
+        response.status_code = status.HTTP_204_NO_CONTENT
+        return response
+
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
             return ActivityConfigWriteSerializer

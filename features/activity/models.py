@@ -14,7 +14,7 @@ class ActivityData(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="activity_data")
     activity = models.ForeignKey(ActivityConfig, on_delete=models.CASCADE, related_name="activity_data")
     start_date = models.DateField(default=date.today)
-    end_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(default=date.today)
 
 class ActivityMetric(models.Model):
     activity_data = models.ForeignKey(ActivityData, on_delete=models.SET_NULL, null=True, related_name="metrics")

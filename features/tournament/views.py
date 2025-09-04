@@ -46,6 +46,16 @@ class ListTournament(generics.ListAPIView):
         self.queryset = Tournament.objects.filter(season=season_id).filter(status=TournamentStatus.ACTIVE)
         return super().get(self, request, *args, **kwargs)
 
+class ListAllTournaments(APIView):
+    authentication_classes = [FirebaseAuthentication]
+    permission_classes = [IsAdminRole]
+    def get(self, request):
+        season_id = request.GET.get('season_id', None)
+        if season_id is None:
+            season_id = Season.objects.order_by('-created_at').first().id
+        queryset = Tournament.objects.filter(season=season_id).filter(status=TournamentStatus.ACTIVE)
+        return success_response(data=TournamentSerializer(queryset, many=True).data, message="Tournaments fetched successfully")
+
 class AddTournament(APIView):
     authentication_classes = [FirebaseAuthentication]
     permission_classes = [IsAdminRole]
@@ -80,16 +90,31 @@ class AddTournament(APIView):
         
         description = request.data.get('description')
         team_size = request.data.get('team_size')
+        activity = request.data.get('activity')
 
         type_obj = TournamentType.objects.get(id=type)
         if "team" in type_obj.name.lower() and not team_size:
             return error_response(message="Team size cannot be null for team type tournament")
-        sport_obj = Sport.objects.get(id=sport)
-        season_obj = Season.objects.get(id=season)
+        if "online" in type_obj.name.lower():
+            if not activity:
+                return error_response(message="Online tournaments must have an activity associated")
+            else:
+                try:
+                    activity_obj = ActivityConfig.objects.get(id=activity)
+                except ActivityConfig.DoesNotExist:
+                    return error_response(message="Activity not found", status=status.HTTP_404_NOT_FOUND)
+        try:
+            sport_obj = Sport.objects.get(id=sport)
+        except Sport.DoesNotExist:
+            return error_response(message="Sport not found", status=status.HTTP_404_NOT_FOUND)
+        try:
+            season_obj = Season.objects.get(id=season)
+        except Season.DoesNotExist:
+            return error_response(message="Season not found", status=status.HTTP_404_NOT_FOUND)
 
         tournament = Tournament.objects.create(id=uuid4(), name=name, season=season_obj, sport=sport_obj, type=type_obj, description=description,
                                                registration_start_date=registration_start_date, registration_end_date=registration_end_date,
-                                               start_date=start_date, end_date=end_date, team_size=team_size)
+                                               start_date=start_date, end_date=end_date, team_size=team_size, activity=activity_obj)
         for city in cities:
             tournament.cities.add(City.objects.get(id=city))
         tournament.save()
@@ -209,7 +234,7 @@ class IndexOperations(APIView):
         if description:
             tournament.description = description
         team_size = request.data.get('team_size')
-        if team_size:
+        if team_size and tournament.isTeam():
             tournament.team_size = team_size
         activity_id = request.data.get('activity')
         if activity_id:

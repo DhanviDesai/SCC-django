@@ -6,6 +6,7 @@ urlpatterns = [
     path("type", views.TournamentTypeIndexOperations.as_view()),
     path("add", views.AddTournament.as_view()),
     path("list", views.ListTournament.as_view()),
+    path("list/all", views.ListAllTournaments.as_view()),
     path("schedule/add", views.AddSchedule.as_view()),
     path("schedule/presigned-url", views.GetSchedulePresignedUrl.as_view()),
     path("list/<uuid:id>", views.ListRegistrants.as_view()),
