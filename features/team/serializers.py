@@ -20,6 +20,8 @@ class TeamSerializer(ModelSerializer):
 class InviteSerializer(ModelSerializer):
     team = NestedTeamSerializer(read_only=True)
     tournament = NestedTournamentSerializer(read_only=True)
+    invitee = NestedUserSerializer(read_only=True)
+    inviter = NestedUserSerializer(read_only=True)
     class Meta:
         model = Invite
         fields = ['id', 'team', 'invitee', 'inviter', 'created_at', 'status', 'tournament']
