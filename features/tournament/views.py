@@ -89,7 +89,7 @@ class AddTournament(APIView):
 
         tournament = Tournament.objects.create(id=uuid4(), name=name, season=season_obj, sport=sport_obj, type=type_obj, description=description,
                                                registration_start_date=registration_start_date, registration_end_date=registration_end_date,
-                                               start_date=start_date, end_date=end_date)
+                                               start_date=start_date, end_date=end_date, team_size=team_size)
         for city in cities:
             tournament.cities.add(City.objects.get(id=city))
         tournament.save()
@@ -158,6 +158,7 @@ class RegisterTournament(APIView):
         if tournament.user.filter(firebase_uid=uid).exists():
             return error_response(message="User has already registered to this tournament")
         tournament.user.add(user)
+        tournament.save()
         return success_response(data=UserSerializer(user).data, message="Successfully registered to tournament", status=status.HTTP_200_OK)
 
 class ListRegistrants(APIView):

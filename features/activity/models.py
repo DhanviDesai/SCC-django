@@ -2,6 +2,7 @@ from django.db import models
 
 from features.metric.models import MetricConfig
 from features.users.models import User
+from datetime import date
 
 # Create your models here.
 class ActivityConfig(models.Model):
@@ -12,11 +13,11 @@ class ActivityConfig(models.Model):
 class ActivityData(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="activity_data")
     activity = models.ForeignKey(ActivityConfig, on_delete=models.CASCADE, related_name="activity_data")
-    start_datetime = models.DateTimeField()
-    end_datetime = models.DateTimeField(null=True, blank=True)
+    start_date = models.DateField(default=date.today)
+    end_date = models.DateField(null=True, blank=True)
 
 class ActivityMetric(models.Model):
-    activity_data = models.ForeignKey(ActivityData, on_delete=models.SET_NULL, null=True, related_name="activity_data")
+    activity_data = models.ForeignKey(ActivityData, on_delete=models.SET_NULL, null=True, related_name="metrics")
     metric = models.ForeignKey(MetricConfig, on_delete=models.SET_NULL, null=True, related_name="activity_metrics")
     value = models.BigIntegerField()
 

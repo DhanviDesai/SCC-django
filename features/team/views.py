@@ -23,7 +23,8 @@ class ListTeams(APIView):
     def get(self, request):
         uid = request.auth.get("user_id")
         user = User.objects.get(firebase_uid=uid)
-        queryset = user.members.all()
+        # Get all the teams where the user is a member of and the tournament has status as ACTIVE
+        queryset = user.members.filter(tournament__status=Tournament.Status.ACTIVE)
         return success_response(data=TeamSerializer(queryset, many=True).data, message="Successfully fetched teams")
 
 class ListAllTeams(APIView):
