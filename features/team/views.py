@@ -8,7 +8,7 @@ from features.utils.authentication import FirebaseAuthentication
 from features.utils.permissions import IsAdminRole
 from features.utils.response_wrapper import success_response, error_response
 from features.users.models import User
-from features.tournament.models import Tournament
+from features.tournament.models import Tournament, TournamentStatus
 from features.utils.messaging import send_fcm_notification
 
 from .models import Team, Invite, InviteStatus
