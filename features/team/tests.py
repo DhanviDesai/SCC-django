@@ -3,7 +3,7 @@ from django.test import TestCase, override_settings
 import uuid
 from rest_framework import status
 from django.urls import reverse
-from rest_framework.test import APITestCase
+from rest_framework.test import APITestCase, APIClient
 from features.users.models import User
 from features.tournament.models import Tournament, TournamentType
 from features.season.models import Season
@@ -196,10 +196,10 @@ class AcceptInviteAPITest(APITestCase):
         response = self.client.post(url, data)
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['data']['inviter'], self.inviter.firebase_uid)
+        self.assertEqual(response.data['data']['inviter']['firebase_uid'], self.inviter.firebase_uid)
         self.assertEqual(response.data['data']['team']['id'], str(team.id))
         self.assertEqual(response.data['data']['team']['name'], team.name)
-        self.assertEqual(response.data['data']['invitee'], self.invitee.firebase_uid)
+        self.assertEqual(response.data['data']['invitee']['firebase_uid'], self.invitee.firebase_uid)
         self.assertEqual(response.data['data']['status'], InviteStatus.PENDING)
     
     @patch('features.utils.messaging.send_fcm_notification', return_value=True)
@@ -270,7 +270,7 @@ class AcceptInviteAPITest(APITestCase):
         response = self.client.post(url, data)
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['data']['inviter'], self.inviter.firebase_uid)
+        self.assertEqual(response.data['data']['inviter']['firebase_uid'], self.inviter.firebase_uid)
 
     @patch('features.utils.messaging.send_fcm_notification', return_value=True)
     @patch('features.utils.authentication.FirebaseAuthentication.authenticate')
@@ -631,3 +631,58 @@ class AcceptInviteAPITest(APITestCase):
     #     self.assertTrue(self.team.is_registered)
     #     self.assertEqual(self.other_pending_invite.status, InviteStatus.EXPIRED)
 
+class UserDeletionInTeamTests(APITestCase):
+
+    def setUp(self):
+        self.client = APIClient()
+
+        # Mock Firebase authentication
+        self.mock_auth_patch = patch('features.utils.authentication.auth.verify_id_token')
+        self.mock_verify_id_token = self.mock_auth_patch.start()
+        self.mock_verify_id_token.return_value = {'uid': 'test_admin_uid', 'email': 'admin@example.com', 'roles': ['ADMIN']}
+
+        # Mock Firebase user deletion
+        self.mock_delete_user_patch = patch('firebase_admin.auth.delete_user')
+        self.mock_delete_user = self.mock_delete_user_patch.start()
+
+        # Create an admin user to perform the deletion
+        self.admin_user = User.objects.create(firebase_uid='test_admin_uid', email='admin@example.com', role=['ADMIN'])
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer some_token')
+
+        # Create users
+        self.inviter = User.objects.create(firebase_uid='inviter_uid', email='inviter@example.com')
+        self.invitee = User.objects.create(firebase_uid='invitee_uid', email='invitee@example.com')
+
+        # Create a team
+        self.team = Team.objects.create(id=uuid.uuid4(), name='Test Team', created_by=self.inviter)
+
+        # Create a tournament
+        now = datetime.now(tz=timezone.utc)
+        self.season = Season.objects.create(id=uuid.uuid4(), name="season1", created_at=now, updated_at=now)
+        self.sport_type = SportType.objects.create(id=uuid.uuid4(), name="1")
+        self.sport = Sport.objects.create(id=uuid.uuid4(), name="sport1", description="a;djfa", sport_type=self.sport_type)
+        self.tournament_type_team = TournamentType.objects.create(id=uuid.uuid4(), name="Online Team")
+        self.team_tournament = Tournament.objects.create(
+            id=uuid.uuid4(),
+            name="tournament1",
+            team_size=3,
+            season=self.season,
+            sport=self.sport,
+            type=self.tournament_type_team
+        )
+        self.team.tournament.add(self.team_tournament)
+
+        # Create an invite
+        self.invite = Invite.objects.create(id=uuid.uuid4(), team=self.team, inviter=self.inviter, invitee=self.invitee, created_at=now, updated_at=now, tournament=self.team_tournament)
+
+    def tearDown(self):
+        self.mock_auth_patch.stop()
+        self.mock_delete_user_patch.stop()
+
+    def test_deleting_user_deletes_invites(self):
+        # Delete the invitee
+        self.invitee.delete()
+
+        # Check that the invite is deleted
+        with self.assertRaises(Invite.DoesNotExist):
+            Invite.objects.get(id=self.invite.id)

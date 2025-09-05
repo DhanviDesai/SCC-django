@@ -10,4 +10,5 @@ urlpatterns = [
     path("tournament", views.ListTournaments.as_view(), name="List tournaments the user has registered to"),
     path("gender", views.ListGenderTypes.as_view(), name='list-gender-types'),
     path("<slug:uid>", views.GetMe.as_view(), name="Get user details"),
+    path("delete/<slug:uid>", views.DeleteUser.as_view(), name="Delete user"),
 ]

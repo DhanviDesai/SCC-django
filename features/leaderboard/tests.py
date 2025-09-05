@@ -1,5 +1,5 @@
 from django.test import TestCase
-from rest_framework.test import APITestCase
+from rest_framework.test import APITestCase, APIClient
 import uuid
 from django.urls import reverse
 import logging
@@ -316,3 +316,49 @@ class LeaderboardTest(APITestCase):
         self.assertEqual(response.data['data'][0]['rank'], 1)
         self.assertEqual(response.data['data'][1]['rank_holder'], self.team2.name)
         self.assertEqual(response.data['data'][1]['rank'], 2)
+
+from unittest.mock import patch
+from .models import Leaderboard
+
+class UserDeletionInLeaderboardTests(APITestCase):
+
+    def setUp(self):
+        self.client = APIClient()
+        # Mock Firebase authentication
+        self.mock_auth_patch = patch('features.utils.authentication.auth.verify_id_token')
+        self.mock_verify_id_token = self.mock_auth_patch.start()
+        self.mock_verify_id_token.return_value = {'uid': 'test_admin_uid', 'email': 'admin@example.com', 'roles': ['ADMIN']}
+
+        # Mock Firebase user deletion
+        self.mock_delete_user_patch = patch('firebase_admin.auth.delete_user')
+        self.mock_delete_user = self.mock_delete_user_patch.start()
+
+        # Create an admin user to perform the deletion
+        self.admin_user = User.objects.create(firebase_uid='test_admin_uid', email='admin@example.com', role=['ADMIN'])
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer some_token')
+
+        # Create a user to be deleted
+        self.user_to_delete = User.objects.create(firebase_uid='test_user_uid', email='test@example.com')
+
+        # Create related objects
+        now = datetime.now(tz=timezone.utc)
+        self.season = Season.objects.create(id=uuid.uuid4(), name="Test Season", created_at=now, updated_at=now)
+        self.sport_type = SportType.objects.create(id=uuid.uuid4(), name="Test Sport Type")
+        self.sport = Sport.objects.create(id=uuid.uuid4(), name="Test Sport", sport_type=self.sport_type, description="Test Description")
+        self.tournament_type = TournamentType.objects.create(id=uuid.uuid4(), name="Individual Online")
+        self.tournament = Tournament.objects.create(id=uuid.uuid4(), name='Test Tournament', season=self.season, sport=self.sport, type=self.tournament_type)
+
+        self.leaderboard = Leaderboard.objects.create(tournament=self.tournament, user=self.user_to_delete, rank=1)
+
+    def tearDown(self):
+        self.mock_auth_patch.stop()
+        self.mock_delete_user_patch.stop()
+
+    def test_deleting_user_sets_leaderboard_user_to_null(self):
+        # Delete the user
+        self.user_to_delete.delete()
+
+        # Check that the leaderboard entry still exists but the user is null
+        self.leaderboard.refresh_from_db()
+        self.assertIsNone(self.leaderboard.user)
+        self.assertEqual(Leaderboard.objects.count(), 1)

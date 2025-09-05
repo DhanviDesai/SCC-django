@@ -9,7 +9,7 @@ class Team(models.Model):
     name = models.CharField(max_length=256)
     members = models.ManyToManyField(User, related_name='members')
     tournament = models.ManyToManyField(Tournament, related_name='tournament_team')
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     is_registered = models.BooleanField(default=False)
 
 class InviteStatus(models.TextChoices):

@@ -209,3 +209,26 @@ class ListGenderTypes(APIView):
     def get(self, request):
         logger.info("Returning gender types")
         return success_response(data=GenderTypeSerializer(GenderTypes.objects.all(), many=True).data)
+
+
+class DeleteUser(APIView):
+    authentication_classes = [FirebaseAuthentication]
+    permission_classes = [IsAdminRole]
+
+    def delete(self, request, uid):
+        try:
+            # First, delete the user from Firebase
+            auth.delete_user(uid)
+
+            # Then, delete the user from the local database
+            user = User.objects.get(firebase_uid=uid)
+            user.delete()
+
+            return success_response(message="User deleted successfully")
+        except auth.UserNotFoundError:
+            return error_response(message="User not found in Firebase", status=status.HTTP_404_NOT_FOUND)
+        except User.DoesNotExist:
+            # This case is unlikely if the user exists in Firebase, but good to handle
+            return error_response(message="User not found in local database", status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return error_response(message=str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
