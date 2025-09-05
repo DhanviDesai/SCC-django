@@ -86,6 +86,7 @@ class AddTournament(APIView):
         registration_start_date = request.data.get('registration_start_date')
         if not registration_start_date:
             return error_response(message="Registration start date cannot be null")
+        # QUESTION 1: Should the registration close at the end_date or keep it open until the tournament ends?
         registration_end_date = request.data.get('registration_end_date')
         if not registration_end_date:
             return error_response(message="Registration end date cannot be null")
@@ -189,12 +190,15 @@ class RegisterTournament(APIView):
             tournament = Tournament.objects.get(id=id)
         except Tournament.DoesNotExist:
             return error_response(message="Tournament not found", status=status.HTTP_404_NOT_FOUND)
+        if tournament.status != TournamentStatus.ACTIVE:
+            return error_response(message="Tournament is not active")
         # Individual cannot register to a team based tournament
         if not tournament.isIndividual():
             return error_response(message="Tournament is of type team")
         # Check whether the user has registered to this tournament
         if tournament.user.filter(firebase_uid=uid).exists():
             return error_response(message="User has already registered to this tournament")
+        # Changes for QUESTION 1 here
         tournament.user.add(user)
         tournament.save()
         return success_response(data=UserSerializer(user).data, message="Successfully registered to tournament", status=status.HTTP_200_OK)
@@ -208,6 +212,10 @@ class ListRegistrants(APIView):
             tournament = Tournament.objects.get(id=id)
         except Tournament.DoesNotExist:
             return error_response(message="Tournament not found", status=status.HTTP_404_NOT_FOUND)
+        if tournament.status != TournamentStatus.ACTIVE:
+            return error_response(message="Tournament is not active")
+        if tournament.isTeam():
+            return error_response(message="Tournament is of type team")
         queryset = tournament.user.all()
         return success_response(data=UserSerializer(queryset, many=True).data, message="Registrants fetched")
 

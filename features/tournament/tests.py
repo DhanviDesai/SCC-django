@@ -477,6 +477,18 @@ class TournamentTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     @patch('features.tournament.views.FirebaseAuthentication.authenticate')
+    def test_register_for_deleted_tournament(self, mock_authenticate):
+        fake_auth_payload = {'user_id': self.user.firebase_uid, 'uid': self.user.firebase_uid, 'role': []}
+        mock_authenticate.return_value = (self.user, fake_auth_payload)
+        self.tournament.status = TournamentStatus.DELETED
+        self.tournament.save()
+
+        url = f'/api/tournament/register/{self.tournament.id}'
+        response = self.client.put(url)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Tournament is not active', response.data['message'])
+
+    @patch('features.tournament.views.FirebaseAuthentication.authenticate')
     def test_register_for_non_existent_tournament(self, mock_authenticate):
         fake_auth_payload = {'user_id': self.user.firebase_uid, 'uid': self.user.firebase_uid, 'role': []}
         mock_authenticate.return_value = (self.user, fake_auth_payload)
