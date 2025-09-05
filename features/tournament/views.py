@@ -5,6 +5,7 @@ from features.utils.authentication import FirebaseAuthentication
 from features.utils.permissions import IsAdminRole
 from rest_framework import generics
 from django_filters.rest_framework import DjangoFilterBackend
+from django_filters import rest_framework as filters
 from rest_framework.filters import SearchFilter
 from rest_framework.pagination import PageNumberPagination
 from uuid import uuid4
@@ -32,12 +33,19 @@ class TournamentPagination(PageNumberPagination):
     page_size_query_param = 'page_size'
     max_page_size = 100
 
+class TournamentFilter(filters.FilterSet):
+    season = filters.CharFilter(field_name='season__id', lookup_expr='exact')
+    name = filters.CharFilter(field_name='name', lookup_expr='istartswith')
+    class Meta:
+        model = Tournament
+        fields = ['season', 'name']
+
 class ListTournament(generics.ListAPIView):
     serializer_class = TournamentSerializer
     pagination_class = TournamentPagination
     filter_backends = [DjangoFilterBackend, SearchFilter]
-    filterset_fields = ['name']
-    search_fields = ['^name']
+    filterset_fields = ['season']
+    search_fields = ['name']
 
     def get(self, request, *args, **kwargs):
         season_id = request.GET.get('season_id', None)
@@ -91,6 +99,7 @@ class AddTournament(APIView):
         description = request.data.get('description')
         team_size = request.data.get('team_size')
         activity = request.data.get('activity')
+        activity_obj = None
 
         type_obj = TournamentType.objects.get(id=type)
         if "team" in type_obj.name.lower() and not team_size:
@@ -159,7 +168,11 @@ class DeleteTournament(APIView):
     authentication_classes = [FirebaseAuthentication]
     permission_classes = [IsAdminRole]
     def delete(self, request, id):
-        tournament = Tournament.objects.get(id=id)
+        try:
+            tournament = Tournament.objects.get(id=id)
+        except Tournament.DoesNotExist:
+            return error_response(message="Tournament not found", status=status.HTTP_404_NOT_FOUND)
+        # Soft delete
         tournament.status = TournamentStatus.DELETED
         tournament.save()
         data = TournamentSerializer(tournament).data
@@ -199,6 +212,15 @@ class ListRegistrants(APIView):
         return success_response(data=UserSerializer(queryset, many=True).data, message="Registrants fetched")
 
 class IndexOperations(APIView):
+    authentication_classes=[FirebaseAuthentication]
+
+    def get_permissions(self):
+        if self.request.method in ['PUT', 'POST', 'DELETE']:
+            self.permission_classes = [IsAdminRole]
+        else:
+            self.permission_classes = []
+        return super().get_permissions()
+
     def get(self, request, id=None):
         if id is None:
             return error_response(message="Tournament id cannot be null")

@@ -196,10 +196,10 @@ class AcceptInviteAPITest(APITestCase):
         response = self.client.post(url, data)
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['data']['inviter'], self.inviter.firebase_uid)
+        self.assertEqual(response.data['data']['inviter']['firebase_uid'], self.inviter.firebase_uid)
         self.assertEqual(response.data['data']['team']['id'], str(team.id))
         self.assertEqual(response.data['data']['team']['name'], team.name)
-        self.assertEqual(response.data['data']['invitee'], self.invitee.firebase_uid)
+        self.assertEqual(response.data['data']['invitee']['firebase_uid'], self.invitee.firebase_uid)
         self.assertEqual(response.data['data']['status'], InviteStatus.PENDING)
     
     @patch('features.utils.messaging.send_fcm_notification', return_value=True)
@@ -270,7 +270,7 @@ class AcceptInviteAPITest(APITestCase):
         response = self.client.post(url, data)
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['data']['inviter'], self.inviter.firebase_uid)
+        self.assertEqual(response.data['data']['inviter']['firebase_uid'], self.inviter.firebase_uid)
 
     @patch('features.utils.messaging.send_fcm_notification', return_value=True)
     @patch('features.utils.authentication.FirebaseAuthentication.authenticate')

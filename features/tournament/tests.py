@@ -33,7 +33,7 @@ class TournamentTestCase(APITestCase):
             firebase_uid=str(uuid.uuid4()),
             username='testuser',
             email='test@example.com',
-            role=[]
+            role=['USER']
         )
 
         cls.sport_type = SportType.objects.create(id=uuid.uuid4(), name='Test Sport Type')
