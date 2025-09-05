@@ -5,6 +5,7 @@ from features.utils.authentication import FirebaseAuthentication
 from features.utils.permissions import IsAdminRole
 from rest_framework import generics
 from django_filters.rest_framework import DjangoFilterBackend
+from django_filters import rest_framework as filters
 from rest_framework.filters import SearchFilter
 from rest_framework.pagination import PageNumberPagination
 from uuid import uuid4
@@ -32,12 +33,19 @@ class TournamentPagination(PageNumberPagination):
     page_size_query_param = 'page_size'
     max_page_size = 100
 
+class TournamentFilter(filters.FilterSet):
+    season = filters.CharFilter(field_name='season__id', lookup_expr='exact')
+    name = filters.CharFilter(field_name='name', lookup_expr='istartswith')
+    class Meta:
+        model = Tournament
+        fields = ['season', 'name']
+
 class ListTournament(generics.ListAPIView):
     serializer_class = TournamentSerializer
     pagination_class = TournamentPagination
     filter_backends = [DjangoFilterBackend, SearchFilter]
-    filterset_fields = ['name']
-    search_fields = ['^name']
+    filterset_fields = ['season']
+    search_fields = ['name']
 
     def get(self, request, *args, **kwargs):
         season_id = request.GET.get('season_id', None)
@@ -78,6 +86,7 @@ class AddTournament(APIView):
         registration_start_date = request.data.get('registration_start_date')
         if not registration_start_date:
             return error_response(message="Registration start date cannot be null")
+        # QUESTION 1: Should the registration close at the end_date or keep it open until the tournament ends?
         registration_end_date = request.data.get('registration_end_date')
         if not registration_end_date:
             return error_response(message="Registration end date cannot be null")
@@ -91,6 +100,7 @@ class AddTournament(APIView):
         description = request.data.get('description')
         team_size = request.data.get('team_size')
         activity = request.data.get('activity')
+        activity_obj = None
 
         type_obj = TournamentType.objects.get(id=type)
         if "team" in type_obj.name.lower() and not team_size:
@@ -159,7 +169,11 @@ class DeleteTournament(APIView):
     authentication_classes = [FirebaseAuthentication]
     permission_classes = [IsAdminRole]
     def delete(self, request, id):
-        tournament = Tournament.objects.get(id=id)
+        try:
+            tournament = Tournament.objects.get(id=id)
+        except Tournament.DoesNotExist:
+            return error_response(message="Tournament not found", status=status.HTTP_404_NOT_FOUND)
+        # Soft delete
         tournament.status = TournamentStatus.DELETED
         tournament.save()
         data = TournamentSerializer(tournament).data
@@ -176,12 +190,15 @@ class RegisterTournament(APIView):
             tournament = Tournament.objects.get(id=id)
         except Tournament.DoesNotExist:
             return error_response(message="Tournament not found", status=status.HTTP_404_NOT_FOUND)
+        if tournament.status != TournamentStatus.ACTIVE:
+            return error_response(message="Tournament is not active")
         # Individual cannot register to a team based tournament
         if not tournament.isIndividual():
             return error_response(message="Tournament is of type team")
         # Check whether the user has registered to this tournament
         if tournament.user.filter(firebase_uid=uid).exists():
             return error_response(message="User has already registered to this tournament")
+        # Changes for QUESTION 1 here
         tournament.user.add(user)
         tournament.save()
         return success_response(data=UserSerializer(user).data, message="Successfully registered to tournament", status=status.HTTP_200_OK)
@@ -195,10 +212,23 @@ class ListRegistrants(APIView):
             tournament = Tournament.objects.get(id=id)
         except Tournament.DoesNotExist:
             return error_response(message="Tournament not found", status=status.HTTP_404_NOT_FOUND)
+        if tournament.status != TournamentStatus.ACTIVE:
+            return error_response(message="Tournament is not active")
+        if tournament.isTeam():
+            return error_response(message="Tournament is of type team")
         queryset = tournament.user.all()
         return success_response(data=UserSerializer(queryset, many=True).data, message="Registrants fetched")
 
 class IndexOperations(APIView):
+    authentication_classes=[FirebaseAuthentication]
+
+    def get_permissions(self):
+        if self.request.method in ['PUT', 'POST', 'DELETE']:
+            self.permission_classes = [IsAdminRole]
+        else:
+            self.permission_classes = []
+        return super().get_permissions()
+
     def get(self, request, id=None):
         if id is None:
             return error_response(message="Tournament id cannot be null")

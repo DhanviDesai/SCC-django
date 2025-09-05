@@ -113,6 +113,15 @@ class InviteUser(APIView):
         if tournament is None:
             return error_response(message="Tournament cannot be null")
         
+        if tournament.status != TournamentStatus.ACTIVE:
+            return error_response(message="Tournament is not active")
+        # Check if the team is already registered
+        if team.is_registered:
+            return error_response(message="Team is already registered to the tournament")
+        # Check if the team belongs to the tournament
+        if not team.tournament.filter(id=tournament.id).exists():
+            return error_response(message="Team does not belong to the tournament")
+        
         invite_exists = Invite.objects.filter(team=team, tournament=tournament, inviter=inviter, invitee=invitee).exists()
         if invite_exists:
             return error_response(message="User has already been invited")
@@ -130,14 +139,16 @@ class ListReceivedInvites(APIView):
     authentication_classes = [FirebaseAuthentication]
     def get(self, request):
         user = User.objects.get(firebase_uid=request.auth.get("user_id"))
-        queryset = Invite.objects.filter(invitee=user)
+        # List only those invites that belong to an ACTIVE tournament
+        queryset = Invite.objects.filter(invitee=user, tournament__status=TournamentStatus.ACTIVE)
         return success_response(InviteSerializer(queryset, many=True).data, status=status.HTTP_200_OK)
 
 class ListSentInvites(APIView):
     authentication_classes = [FirebaseAuthentication]
     def get(self, request):
         user = User.objects.get(firebase_uid=request.auth.get("user_id"))
-        queryset = Invite.objects.filter(inviter=user)
+        # List only those invites that belong to an ACTIVE tournament
+        queryset = Invite.objects.filter(inviter=user, tournament__status=TournamentStatus.ACTIVE)
         return success_response(InviteSerializer(queryset, many=True).data, status=status.HTTP_200_OK)
 
 # Any invite should be rejected/accepted within the registration deadline
@@ -179,6 +190,21 @@ class AcceptInvite(APIView):
             invite.updated_at = datetime.now(tz=timezone.utc)
             invite.save()
             return error_response(message="Team is already full", status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check if the tournament registration is still open
+        current_date = datetime.now().date()
+        if invite.tournament.registration_end_date and current_date > invite.tournament.registration_end_date:
+            # Update the invite status to expired
+            invite.status = InviteStatus.EXPIRED
+            invite.updated_at = datetime.now(tz=timezone.utc)
+            invite.save()
+            return error_response(message="Tournament registration is closed", status=status.HTTP_400_BAD_REQUEST)
+        # Check if the tournament is still active
+        if invite.tournament.status != TournamentStatus.ACTIVE:
+            return error_response(message="Tournament is not active", status=status.HTTP_400_BAD_REQUEST)
+        # Check if the tournament is of type team
+        if not invite.tournament.isTeam():
+            return error_response(message="Tournament is not a team tournament", status=status.HTTP_400_BAD_REQUEST)
 
         # Add the user as a team member
         invite.team.members.add(user)

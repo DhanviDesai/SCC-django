@@ -6,7 +6,7 @@ from django.db.models import Sum, Q, Value
 from django.db.models.functions import Coalesce
 from datetime import datetime
 
-from features.tournament.models import Tournament
+from features.tournament.models import Tournament, TournamentStatus
 from features.activity.models import ActivityConfig, ActivityData, ActivityMetric
 from features.utils.response_wrapper import error_response, success_response
 from features.utils.authentication import FirebaseAuthentication
@@ -79,6 +79,17 @@ class GetLeaderboard(APIView):
             tournament = Tournament.objects.get(id=tournament_id)
         except Tournament.DoesNotExist:
             return error_response(message="Tournament not found", status=status.HTTP_404_NOT_FOUND)
+        # Check the tournament status is ACTIVE
+        if tournament.status != TournamentStatus.ACTIVE:
+            return error_response(message="Tournament is not active", status=status.HTTP_400_BAD_REQUEST)
+        # Check if the tournament has an activity associated with it
+        if not tournament.activity:
+            return error_response(message="Tournament does not have an activity associated with it", status=status.HTTP_400_BAD_REQUEST)
+        # Check if the tournament has users/teams associated with it
+        if tournament.isIndividual() and tournament.user.count() == 0:
+            return error_response(message="No users registered for the tournament", status=status.HTTP_400_BAD_REQUEST)
+        if tournament.isTeam() and tournament.tournament_team.filter(is_registered=True).count() == 0:
+            return error_response(message="No teams registered for the tournament", status=status.HTTP_400_BAD_REQUEST)
         
         # Get the start_date and end_date from the request parameters
         start_date = request.query_params.get('start_date')
@@ -137,6 +148,17 @@ class PublishLeaderboard(APIView):
             tournament = Tournament.objects.get(id=tournament_id)
         except Tournament.DoesNotExist:
             return error_response(message="Tournament not found", status=status.HTTP_404_NOT_FOUND)
+        # Check the tournament status is ACTIVE
+        if tournament.status != TournamentStatus.ACTIVE:
+            return error_response(message="Tournament is not active", status=status.HTTP_400_BAD_REQUEST)
+        # Check if the tournament has an activity associated with it
+        if not tournament.activity:
+            return error_response(message="Tournament does not have an activity associated with it", status=status.HTTP_400_BAD_REQUEST)
+        # Check if the tournament has users/teams associated with it
+        if tournament.isIndividual() and tournament.user.count() == 0:
+            return error_response(message="No users registered for the tournament", status=status.HTTP_400_BAD_REQUEST)
+        if tournament.isTeam() and tournament.tournament_team.filter(is_registered=True).count() == 0:
+            return error_response(message="No teams registered for the tournament", status=status.HTTP_400_BAD_REQUEST)
         
         # Now we need to get the leaderboard for the tournament
         get_leaderboard_view = GetLeaderboard()
