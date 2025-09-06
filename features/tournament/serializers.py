@@ -12,7 +12,7 @@ class NestedTournamentSerializer(serializers.ModelSerializer):
 class TournamentTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = TournamentType
-        fields = ['id', 'name']
+        fields = '__all__'
 
 class TournamentSerializer(serializers.ModelSerializer):
     total_registrants = serializers.SerializerMethodField()

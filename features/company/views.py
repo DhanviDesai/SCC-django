@@ -27,7 +27,7 @@ class CompanyPagination(PageNumberPagination):
     max_page_size = 100
 
 class CompanyListView(generics.ListAPIView):
-    queryset = Company.objects.all().order_by('company_name')
+    queryset = Company.objects.filter(status=CompanyStatus.ACTIVE).order_by('company_name')
     serializer_class = CompanySerializer
     pagination_class = CompanyPagination
     filter_backends = [DjangoFilterBackend, SearchFilter]

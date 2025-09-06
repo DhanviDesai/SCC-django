@@ -3,6 +3,7 @@ from rest_framework.views import APIView
 from rest_framework import status
 from uuid import uuid4
 from datetime import datetime, timezone
+from firebase_admin import auth
 
 from features.utils.authentication import FirebaseAuthentication
 from features.utils.permissions import IsAdminRole
@@ -24,7 +25,7 @@ class ListTeams(APIView):
         uid = request.auth.get("user_id")
         user = User.objects.get(firebase_uid=uid)
         # Get all the teams where the user is a member of and the tournament has status as ACTIVE
-        queryset = user.members.filter(tournament__status=Tournament.Status.ACTIVE)
+        queryset = user.members.filter(tournament__status=TournamentStatus.ACTIVE)
         return success_response(data=TeamSerializer(queryset, many=True).data, message="Successfully fetched teams")
 
 class ListAllTeams(APIView):
@@ -69,14 +70,61 @@ class CreateTeam(APIView):
         # Check if the user has already created a team for the tournament
         if target_tournament.tournament_team.filter(created_by=user).exists():
             return error_response(message="You have already created a team for this tournament")
-
-        # Check if the user is already registered for the tournament which is registered
-        is_registered = user.members.filter(tournament=target_tournament, is_registered=True).exists()
-        if is_registered:
-            return error_response(message="User is already part of a team for the tournament")
-        team = Team.objects.create(id=uuid4(), name=team_name, created_by=user)
+        
+        # Check the target_tournament is not external
+        if not target_tournament.isExternal():
+            # Check if the user is already registered for the tournament which is registered
+            is_registered = user.members.filter(tournament=target_tournament, is_registered=True).exists()
+            if is_registered:
+                return error_response(message="User is already part of a team for the tournament")
+            team = Team.objects.create(id=uuid4(), name=team_name, created_by=user)
+            team.members.add(user)
+            team.tournament.add(target_tournament)
+            team.save()
+            return success_response(data=TeamSerializer(team).data, message="Successfully created a team", status=status.HTTP_201_CREATED)
+        
+        # Get the label from the request body
+        label = request.data.get("label")
+        if label is None:
+            return error_response(message="Label is required for external tournaments")
+        # Check if the label is valid
+        if label not in target_tournament.type.rules.get("labels", []):
+            return error_response(message="Invalid label")
+        # Get the list of guests from the request body
+        guests = request.data.get("guests", [])
+        if not isinstance(guests, list):
+            return error_response(message="Guests should be a list")
+        # Check if the number of guests is within the limit
+        max_guests = [ rule['max_guests'] if rule['label'] == label else 0 for rule in target_tournament.type.rules ]
+        if len(guests) > max_guests[0]:
+            return error_response(message=f"Number of guests exceeds the limit of {max_guests[0]}")
+        # Create firebase users for the guests if they do not exist
+        team = Team.objects.create(id=uuid4(), name=team_name, created_by=user, label=label)
         team.members.add(user)
+        for guest_email in guests:
+            try:
+                guest_user = User.objects.get(email=guest_email)
+                # The user exists, just set the custom claims
+                firebase_user = auth.get_user(guest_user.firebase_uid)
+                auth.set_custom_user_claims(firebase_user.uid, {'roles': ['GUEST'], 'invited_by': user.firebase_uid})
+            except User.DoesNotExist:
+                # Create a firebase user
+                try:
+                    firebase_user = auth.create_user(email=guest_email)
+                    # Set custom claims for the user
+                    auth.set_custom_user_claims(firebase_user.uid, {'roles': ['GUEST'], 'invited_by': user.firebase_uid})
+                    guest_user = User.objects.create(firebase_uid=firebase_user.uid, email=guest_email)
+                    password_reset_link = auth.generate_password_reset_link(guest_email)
+                    # Send email to the guest with the password reset link
+                except Exception as e:
+                    logger.error(f"Error creating firebase user for {guest_email}: {e}")
+                    return error_response(message=f"Error creating user for {guest_email}")
+            team.members.add(guest_user)
+        # All the guest users have been created and custom claims set and users created in our db and emails sent
+        # Create the team now
+        team.is_registered = True
         team.tournament.add(target_tournament)
+        team.save()
         return success_response(data=TeamSerializer(team).data, message="Successfully created a team", status=status.HTTP_201_CREATED)
 
 class InviteUser(APIView):

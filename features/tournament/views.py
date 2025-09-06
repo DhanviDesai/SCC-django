@@ -24,9 +24,31 @@ from features.activity.models import ActivityConfig
 
 # Create your views here.
 class TournamentTypeIndexOperations(APIView):
+    def get_authenticators(self):
+        if self.request.method in ['POST', 'PUT', 'DELETE']:
+            self.authentication_classes = [FirebaseAuthentication]
+        else:
+            self.authentication_classes = []
+        return super().get_authenticators()
+    
+    def get_permissions(self):
+        if self.request.method in ['POST', 'PUT', 'DELETE']:
+            self.permission_classes = [IsAdminRole]
+        else:
+            self.permission_classes = []
+        return super().get_permissions()
+
     def get(self, request):
         queryset = TournamentType.objects.all()
         return success_response(TournamentTypeSerializer(queryset, many=True).data, message="Tournament type fetched")
+    
+    def post(self, request):
+        name = request.data.get('name')
+        if not name:
+            return error_response(message="Name cannot be null")
+        rules = request.data.get('rules', None)
+        tournament_type = TournamentType.objects.create(id=uuid4(), name=name, rules=rules)
+        return success_response(data=TournamentTypeSerializer(tournament_type).data, message="Created tournament type", status=status.HTTP_201_CREATED)
 
 class TournamentPagination(PageNumberPagination):
     page_size = 5
