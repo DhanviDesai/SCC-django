@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     'features.icon',
     'features.activity',
     'features.leaderboard',
+    'features.quiz',
 ]
 
 MIDDLEWARE = [

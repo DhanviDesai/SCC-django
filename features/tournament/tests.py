@@ -79,6 +79,12 @@ class TournamentTestCase(APITestCase):
         cls.activity_config = ActivityConfig.objects.create(activity_type='Test Activity')
 
         cls.tournament.cities.add(cls.city1, cls.city2)
+    
+    def test_list_tournaments(self):
+        url = '/api/tournament/list'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 1)
 
     def test_list_tournament_types(self):
         url = '/api/tournament/type'

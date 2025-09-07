@@ -55,6 +55,9 @@ class Tournament(models.Model):
     
     def isExternal(self):
         return "external" in self.type.name.lower()
+    
+    def isQuiz(self):
+        return "quiz" in self.type.name.lower()
 
 class OnlineIndividualData(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

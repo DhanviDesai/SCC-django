@@ -60,13 +60,13 @@ class TournamentFilter(filters.FilterSet):
     name = filters.CharFilter(field_name='name', lookup_expr='istartswith')
     class Meta:
         model = Tournament
-        fields = ['season', 'name']
+        fields = ['season', 'name', 'type']
 
 class ListTournament(generics.ListAPIView):
     serializer_class = TournamentSerializer
     pagination_class = TournamentPagination
     filter_backends = [DjangoFilterBackend, SearchFilter]
-    filterset_fields = ['season']
+    filterset_fields = ['season', 'type']
     search_fields = ['name']
 
     def get(self, request, *args, **kwargs):
@@ -215,7 +215,7 @@ class RegisterTournament(APIView):
         if tournament.status != TournamentStatus.ACTIVE:
             return error_response(message="Tournament is not active")
         # Individual cannot register to a team based tournament
-        if not tournament.isIndividual():
+        if not tournament.isIndividual() and not tournament.isQuiz():
             return error_response(message="Tournament is of type team")
         # Check whether the user has registered to this tournament
         if tournament.user.filter(firebase_uid=uid).exists():

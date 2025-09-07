@@ -31,3 +31,15 @@ class User(models.Model):
 
     def __str__(self):
         return json.dumps({"user_id": self.firebase_uid, "email": self.email, "roles": str(self.role)})
+
+    @property
+    def is_authenticated(self):
+        return True
+
+    @property
+    def is_active(self):
+        return True
+
+    @property
+    def is_staff(self):
+        return 'ADMIN' in self.role

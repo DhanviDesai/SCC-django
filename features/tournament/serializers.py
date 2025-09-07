@@ -23,7 +23,7 @@ class TournamentSerializer(serializers.ModelSerializer):
                   'cities', 'description', 'total_registrants', 'created_at', 'updated_at', 'status', 'team_size', 'activity']
     
     def get_total_registrants(self, obj):
-        if obj.isIndividual():
+        if obj.isIndividual() or obj.isQuiz():
             return obj.user.all().count()
         if obj.isTeam():
             return obj.tournament_team.filter(is_registered=True).count()
