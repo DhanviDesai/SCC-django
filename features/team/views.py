@@ -88,18 +88,24 @@ class CreateTeam(APIView):
         if label is None:
             return error_response(message="Label is required for external tournaments")
         # Check if the label is valid
-        if label not in target_tournament.type.rules.get("labels", []):
+        request_rule = {}
+        label_found = False
+        for rule in target_tournament.type.rules:
+            if rule.get("label") == label:
+                request_rule = rule 
+                label_found = True
+        if label_found == False:
             return error_response(message="Invalid label")
         # Get the list of guests from the request body
         guests = request.data.get("guests", [])
         if not isinstance(guests, list):
             return error_response(message="Guests should be a list")
         # Check if the number of guests is within the limit
-        max_guests = [ rule['max_guests'] if rule['label'] == label else 0 for rule in target_tournament.type.rules ]
-        if len(guests) > max_guests[0]:
+        max_guests = request_rule.get('max_guests')
+        if len(guests) > max_guests:
             return error_response(message=f"Number of guests exceeds the limit of {max_guests[0]}")
         # Create firebase users for the guests if they do not exist
-        team = Team.objects.create(id=uuid4(), name=team_name, created_by=user, label=label)
+        team = Team.objects.create(id=uuid4(), name=team_name, created_by=user)
         team.members.add(user)
         for guest_email in guests:
             try:

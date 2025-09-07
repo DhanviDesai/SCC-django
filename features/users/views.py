@@ -7,6 +7,7 @@ from firebase_admin import auth
 from rest_framework_simplejwt.tokens import RefreshToken
 from uuid import uuid4
 from rest_framework.permissions import IsAuthenticated
+from django.db.models import Q
 
 from features.utils.authentication import FirebaseAuthentication,FirebaseTokenAuthentication
 from features.utils.permissions import IsAdminRole
@@ -118,7 +119,6 @@ class FirebaseLogin(APIView):
 
 class ListUsers(APIView):
     authentication_classes = [FirebaseAuthentication]
-    permission_classes = [IsAdminRole]
     def get(self, request):
         users = User.objects.all()
         serializer = UserSerializer(users, many=True)
@@ -201,8 +201,8 @@ class ListTournaments(APIView):
     authentication_classes = [FirebaseAuthentication]
     def get(self, request):
         user = User.objects.get(firebase_uid = request.auth.get("user_id"))
-        # Get list of all the tournaments the user has registered to
-        queryset = user.tournament_user.all()
+        # Get list of all the tournaments the user has registered to either individually or as a team
+        queryset = Tournament.objects.filter(Q(user=user) | Q(tournament_team__members=user, tournament_team__is_registered=True)).distinct()
         return success_response(data=TournamentSerializer(queryset, many=True).data, message="Tournaments fetched successfully")
 
 class ListGenderTypes(APIView):

@@ -16,7 +16,6 @@ class TournamentTypeSerializer(serializers.ModelSerializer):
 
 class TournamentSerializer(serializers.ModelSerializer):
     total_registrants = serializers.SerializerMethodField()
-    activity = ActivityConfigReadSerializer(read_only=True)
     type = TournamentTypeSerializer(read_only=True)
     class Meta:
         model = Tournament

@@ -242,7 +242,13 @@ class ListRegistrants(APIView):
         return success_response(data=UserSerializer(queryset, many=True).data, message="Registrants fetched")
 
 class IndexOperations(APIView):
-    authentication_classes=[FirebaseAuthentication]
+
+    def get_authenticators(self):
+        if self.request.method == 'GET':
+            authentication_classes = []
+        else:
+            authentication_classes = [FirebaseAuthentication]
+        return super().get_authenticators()
 
     def get_permissions(self):
         if self.request.method in ['PUT', 'POST', 'DELETE']:

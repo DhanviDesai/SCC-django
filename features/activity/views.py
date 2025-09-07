@@ -19,8 +19,14 @@ logger = logging.getLogger(__name__)
 # Create your views here.
 class ActivityConfigViewSet(viewsets.ModelViewSet):
     authentication_classes = [FirebaseAuthentication]
-    permission_classes = [IsAdminRole]
     queryset = ActivityConfig.objects.all()
+    
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            self.permission_classes = [IsAdminRole]
+        else:
+            self.permission_classes = []
+        return super().get_permissions()
 
     # Handle OPTIONS request and return allowed methods with 204 status
     def options(self, request, *args, **kwargs):
