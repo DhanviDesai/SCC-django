@@ -5,7 +5,7 @@ from features.users.models import User
 class QuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Question
-        fields = ['id', 'text', 'options', 'pool']
+        fields = '__all__'
 
 class QuizRoundSerializer(serializers.ModelSerializer):
     class Meta:

@@ -128,7 +128,7 @@ class GetQuestionView(APIView):
         # Select 5 random questions from remaining questions
         if not remaining_questions.exists():
             return error_response(message="No more questions available", status=status.HTTP_404_NOT_FOUND)
-        selected_questions = random.sample(list(remaining_questions), min(1, remaining_questions.count()))
+        selected_questions = random.sample(list(remaining_questions), min(5, remaining_questions.count()))
         serializer = QuestionSerializer(selected_questions, many=True)
         return success_response(data=serializer.data, status=status.HTTP_200_OK)
 
