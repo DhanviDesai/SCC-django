@@ -8,5 +8,6 @@ router.register(r'config', views.ActivityConfigViewSet, basename='activity-confi
 urlpatterns = [
     path('', include(router.urls)),
     path('data', views.ActivityDataPostView.as_view(), name='activity-data-post'),
-    path('data/<int:activity_id>', views.ActivityDataListView.as_view(), name='activity-data-upload')
+    path('data/<int:activity_id>', views.ActivityDataListView.as_view(), name='activity-data-upload'),
+    path('data/delete', views.ActivityDataDeleteView.as_view(), name='activity-data-delete'),
 ]

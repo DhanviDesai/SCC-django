@@ -21,6 +21,9 @@ from features.users.models import User
 from features.users.serializers import UserSerializer
 from features.utils.storage import generate_presigned_url
 from features.activity.models import ActivityConfig
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Create your views here.
 class TournamentTypeIndexOperations(APIView):
@@ -245,16 +248,18 @@ class IndexOperations(APIView):
 
     def get_authenticators(self):
         if self.request.method == 'GET':
-            authentication_classes = []
+            self.authentication_classes = []
         else:
-            authentication_classes = [FirebaseAuthentication]
+            self.authentication_classes = [FirebaseAuthentication]
         return super().get_authenticators()
 
     def get_permissions(self):
+        logger.info(self.request.method)
         if self.request.method in ['PUT', 'POST', 'DELETE']:
             self.permission_classes = [IsAdminRole]
         else:
             self.permission_classes = []
+        logger.info(self.permission_classes)
         return super().get_permissions()
 
     def get(self, request, id=None):

@@ -5,6 +5,8 @@ import logging
 from django.db.models import Sum, Q, Value
 from django.db.models.functions import Coalesce
 from datetime import datetime
+import pytz
+from django.utils import timezone
 
 from features.tournament.models import Tournament, TournamentStatus
 from features.activity.models import ActivityConfig, ActivityData, ActivityMetric
@@ -22,6 +24,18 @@ logger = logging.getLogger(__name__)
 # Create a view that creates leaderboard for the given tournament
 class GetLeaderboard(APIView):
     def get_individual_tournament_leaderboard(self, activity, tournament: Tournament, start_date, end_date):
+        # Print all the rows along with the total score for debugging
+        logger.info(f"Generating leaderboard for tournament: {tournament.name}, activity: {activity.id}, start_date: {start_date}, end_date: {end_date}")
+
+        start_date = datetime.fromisoformat(start_date)
+        end_date = datetime.fromisoformat(end_date)
+
+        # Add Asia/Kolkata timezone info for start and end date objects
+        ist_tz = pytz.timezone('Asia/Kolkata')
+        start_date = ist_tz.localize(start_date)
+        end_date = ist_tz.localize(end_date)
+        logger.info(f"Timezone-aware start_date: {start_date}, end_date: {end_date}")
+
         # Build the ranking query
         ranked_participants = tournament.user.annotate(
             total_score=Coalesce(
@@ -29,12 +43,13 @@ class GetLeaderboard(APIView):
                     'activity_data__metrics__value',
                     filter=
                         Q(activity_data__activity=tournament.activity) &
-                        Q(activity_data__start_date__gte=start_date) &
-                        Q(activity_data__start_date__lte=end_date)
+                        Q(activity_data__start_datetime__gte=start_date) &
+                        Q(activity_data__start_datetime__lte=end_date)
                 ),
                 Value(0)  # If Sum returns NULL, use 0 instead
             )
         ).filter(total_score__gt=0).order_by('-total_score')
+        logger.info(ranked_participants.all())
         objects = []
         for rank, rank_holder in enumerate(ranked_participants, start=1):
             objects.append({
@@ -49,7 +64,14 @@ class GetLeaderboard(APIView):
 
         # Build the ranking query
 
-        logger.info(start_date, end_date)
+        start_date = datetime.fromisoformat(start_date)
+        end_date = datetime.fromisoformat(end_date)
+
+        # Add Asia/Kolkata timezone info for start and end date objects
+        ist_tz = pytz.timezone('Asia/Kolkata')
+        start_date = ist_tz.localize(start_date)
+        end_date = ist_tz.localize(end_date)
+        logger.info(f"Timezone-aware start_date: {start_date}, end_date: {end_date}")
 
         ranked_teams = tournament.tournament_team.filter(is_registered=True).annotate(
             total_score=Coalesce(
@@ -57,8 +79,8 @@ class GetLeaderboard(APIView):
                     'members__activity_data__metrics__value',
                     filter=
                         Q(members__activity_data__activity=tournament.activity) &
-                        Q(members__activity_data__start_date__gte=start_date) &
-                        Q(members__activity_data__start_date__lte=end_date)
+                        Q(members__activity_data__start_datetime__gte=start_date) &
+                        Q(members__activity_data__start_datetime__lte=end_date)
                 ),
                 Value(0)  # If Sum returns NULL, use 0 instead
             )
