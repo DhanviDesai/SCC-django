@@ -278,6 +278,12 @@ class IndexOperations(APIView):
             tournament = Tournament.objects.get(id=id)
         except Tournament.DoesNotExist:
             return error_response(message="Tournament not found", status=status.HTTP_404_NOT_FOUND)
+        tournament_type = request.data.get('type')
+        try:
+            typeObj = TournamentType.objects.get(id=tournament_type)
+        except TournamentType.DoesNotExist:
+            return error_response(message="Tournament type not found", status=status.HTTP_404_NOT_FOUND)
+        tournament.type = typeObj
         name = request.data.get('name')
         if name:
             tournament.name = name

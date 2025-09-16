@@ -39,7 +39,7 @@ class StartQuizRoundView(APIView):
         except Tournament.DoesNotExist:
             return error_response(message="Tournament not found", status=status.HTTP_404_NOT_FOUND)
         
-        if tournament.type.name != 'Quiz':
+        if 'quiz' not in tournament.type.name.lower():
             return error_response(message="Tournament is not of type Quiz", status=status.HTTP_400_BAD_REQUEST)
         
         start_datetime = request.data.get('start_time')
@@ -92,7 +92,7 @@ class ActiveQuizRoundView(APIView):
     def get(self, request):
         user_id = request.auth.get('user_id')
         user = User.objects.get(firebase_uid=user_id)
-        tournaments = user.tournament_user.filter(type__name='Quiz')
+        tournaments = user.tournament_user.filter(type__name__icontains='quiz')
         if not tournaments.exists():
             return error_response(message='User is not registered to any quiz tournaments.', status=status.HTTP_404_NOT_FOUND)
         # Check for active quiz rounds in these tournaments where the user has not attempted

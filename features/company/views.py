@@ -22,7 +22,7 @@ from .serializers import CompanySerializer
 
 # Create your views here.
 class CompanyPagination(PageNumberPagination):
-    page_size = 5
+    page_size = 35
     page_size_query_param = 'page_size'
     max_page_size = 100
 

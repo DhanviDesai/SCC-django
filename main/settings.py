@@ -79,6 +79,7 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'main.urls'
 
 CORS_ALLOWED_ORIGINS = [
+    "https://devadmin.swedishchampionship.com",
     "http://localhost:3000",
 ]
 
