@@ -6,9 +6,12 @@ from features.utils.permissions import IsAdminRole
 from rest_framework.pagination import PageNumberPagination
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter
+import uuid
 
 from .models import City
 from .serializers import CitySerializer
+
+from features.utils.response_wrapper import success_response, error_response
 
 # Create your views here.
 class CityPagination(PageNumberPagination):
@@ -29,7 +32,17 @@ class IndexOperations(APIView):
     permission_classes = [IsAdminRole]
 
     def post(self, request):
-        pass
+        name = request.data.get('name')
+        if not name:
+            return error_response(message="Name is required", status=400)
+        state = request.data.get('state')
+        if not state:
+            return error_response(message="State is required", status=400)
+        if City.objects.filter(name=name, state=state).exists():
+            return error_response(message="City with this name and state already exists", status=400)
+        city = City.objects.create(id=uuid.uuid4(), name=name, state=state)
+        serializer = CitySerializer(city)
+        return success_response(data=serializer.data, message="City created successfully", status=201)
 
     def put(self, request, city_id):
         pass

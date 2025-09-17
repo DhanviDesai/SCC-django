@@ -4,4 +4,5 @@ from . import views
 
 urlpatterns = [
     path("list", views.ListCity.as_view()),
+    path("", views.IndexOperations.as_view()),
 ]
