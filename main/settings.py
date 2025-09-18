@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+import dj_database_url
 
 load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -79,6 +80,7 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'main.urls'
 
 CORS_ALLOWED_ORIGINS = [
+    "https://admin.swedishchampionship.com",
     "https://devadmin.swedishchampionship.com",
     "http://localhost:3000",
 ]
@@ -123,17 +125,21 @@ LOGGING = {
 #         'NAME': BASE_DIR / 'db.sqlite3',
 #     }
 # }
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': os.environ.get('DB_NAME', 'swedish_chamber'),
-        'USER': os.environ.get('DB_USERNAME', 'server'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', 'strong-password'),
-        'HOST': os.environ.get('DB_HOSTNAME', 'localhost'),
-        'PORT': os.environ.get('DB_PORT', '5432')
+if 'DATABASE_URL' in os.environ:
+    DATABASES = {
+        'default': dj_database_url.config(conn_max_age=600, ssl_require=True)
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql_psycopg2',
+            'NAME': os.environ.get('DB_NAME', 'swedish_chamber'),
+            'USER': os.environ.get('DB_USERNAME', 'server'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', 'strong-password'),
+            'HOST': os.environ.get('DB_HOSTNAME', 'localhost'),
+            'PORT': os.environ.get('DB_PORT', '5432')
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -180,9 +186,18 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 import firebase_admin
 from firebase_admin import credentials
+import base64
+import json
 
 try:
-    default_app = firebase_admin.initialize_app()
+    firebase_creds_b64 = os.getenv("FIREBASE_CREDS_B64")
+    if firebase_creds_b64:
+        firebase_creds_json = base64.b64decode(firebase_creds_b64)
+        creds_dict = json.loads(firebase_creds_json)
+        cred = credentials.Certificate(creds_dict)
+        firebase_admin.initialize_app(cred)
+    else:
+        firebase_admin.initialize_app()
 except ValueError:
     pass
 
@@ -198,6 +213,10 @@ STRAVA_CLIENT_SECRET = os.getenv("STRAVA_CLIENT_SECRET")
 STRAVA_BASE_URL = os.getenv("STRAVA_BASE_URL")
 
 HOST = os.getenv('HOST')
+
+MAIL_EMAIL_LOGIN = os.getenv("MAIL_EMAIL_LOGIN")
+MAIL_EMAIL_PASSWORD = os.getenv("MAIL_EMAIL_PASSWORD")
+MAIL_SMTP_SERVER = os.getenv("MAIL_SMTP_SERVER")
 
 # --- CELERY SETTINGS ---
 CELERY_BROKER_URL = 'redis://localhost:6379/0'

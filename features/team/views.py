@@ -11,6 +11,7 @@ from features.utils.response_wrapper import success_response, error_response
 from features.users.models import User
 from features.tournament.models import Tournament, TournamentStatus
 from features.utils.messaging import send_fcm_notification
+from features.utils.email import EmailClient
 
 from .models import Team, Invite, InviteStatus
 from .serializers import TeamSerializer, InviteSerializer
@@ -122,6 +123,12 @@ class CreateTeam(APIView):
                     guest_user = User.objects.create(firebase_uid=firebase_user.uid, email=guest_email)
                     password_reset_link = auth.generate_password_reset_link(guest_email)
                     # Send email to the guest with the password reset link
+                    EmailClient.get_instance().send_invite_guest(
+                        tournament=target_tournament.name,
+                        inviter=user.username,
+                        to_email=guest_email,
+                        password_reset_link=password_reset_link
+                    )
                 except Exception as e:
                     logger.error(f"Error creating firebase user for {guest_email}: {e}")
                     return error_response(message=f"Error creating user for {guest_email}")
